@@ -1,0 +1,39 @@
+============================================================
+  GIMI / TrackSolid Pro - Full API Integration Test
+============================================================
+Time: 2026-02-21T07:02:20.909Z
+Endpoint: https://eu-open.tracksolidpro.com/route/rest
+Account: GBH2025
+
+--- TEST 1: LOGIN ---
+  PASS: Login successful!
+  accessToken: 3b7d56c2e369861be7a386c6393812...
+  expiresIn: 7200 seconds
+  refreshToken: 3ac0c65947044eceaf970e74f7a6b5...
+
+--- TEST 2: DEVICE LIST ---
+  PASS: 1 devices found
+    1. Name: PB704-87828 | IMEI: 780901703187828 | Status: NORMAL | Model: N/A
+
+--- TEST 3: DEVICE LOCATIONS ---
+  PASS: 1 device locations
+    1. IMEI: 780901703187828 | Lat: 24.816776 | Lng: 46.653854 | Speed: null km/h | GPS: 2026-02-21 05:47:40 | Status: 0
+
+--- TEST 4: TRACK HISTORY (IMEI: 780901703187828, last 24h) ---
+  Range: 2026-02-20 07:02:21 -> 2026-02-21 07:02:21
+  PASS: 121 track points
+    First: Lat=24.816778, Lng=46.653835, Speed=undefined, Time=2026-02-20 08:28:36
+    Last:  Lat=24.816776, Lng=46.653854, Speed=undefined, Time=2026-02-21 05:47:40
+
+--- TEST 5: GEOFENCES ---
+  PASS: 0 geofences
+
+============================================================
+  TEST SUMMARY
+============================================================
+  Login:      PASS
+  Devices:    PASS (1 devices)
+  Locations:  PASS
+  History:    TESTED
+  Geofences:  PASS
+============================================================

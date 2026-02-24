@@ -1,0 +1,17 @@
+=== GIMI Endpoint Test (Batch 2) ===
+Time: 2026-02-21T06:56:38.014Z
+
+  SKIP | http://open.tracksolidpro.com/route/rest | fetch failed
+  SKIP | https://open.tracksolidpro.com/route/rest | fetch failed
+  SKIP | http://open.tracksolid.com/route/rest | fetch failed
+  SKIP | https://open.tracksolid.com/route/rest | fetch failed
+  SKIP | http://open.jimilab.com/route/rest | fetch failed
+  SKIP | https://open.jimilab.com/route/rest | fetch failed
+  SKIP | http://openapi.jimilab.com/route/rest | fetch failed
+  SKIP | https://openapi.jimilab.com/route/rest | fetch failed
+  SKIP | http://open.jimiiot.com/route/rest | fetch failed
+  SKIP | https://open.jimiiot.com/route/rest | fetch failed
+  SKIP | http://open-hk.10000track.com/route/rest | fetch failed
+  SKIP | http://open-eu.10000track.com/route/rest | fetch failed
+  SKIP | http://open-sa.10000track.com/route/rest | fetch failed
+  SKIP | http://open-me.10000track.com/route/rest | fetch failed

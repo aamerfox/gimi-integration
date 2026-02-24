@@ -1,0 +1,36 @@
+=== GIMI Regional Endpoint Test ===
+Time: 2026-02-21T06:55:46.177Z
+Testing 16 endpoints...
+
+  FAIL | http://open.10000track.com/route/rest
+       code=1001, message=缺少AppKey参数或无效的AppKey
+  FAIL | https://open.10000track.com/route/rest
+       code=1001, message=缺少AppKey参数或无效的AppKey
+  SKIP | http://open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | https://open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | http://hk.open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | https://hk.open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | http://eu.open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | https://eu.open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | http://us.open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | https://us.open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | http://sa.open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | https://sa.open.jimicloud.com/route/rest
+       fetch failed
+  SKIP | http://open.atrack.com.tw/route/rest
+       fetch failed
+  SKIP | https://open.atrack.com.tw/route/rest
+       fetch failed
+  SKIP | http://open.tracksolidpro.com/route/rest
+       fetch failed
+  SKIP | https://open.tracksolidpro.com/route/rest
+       fetch failed

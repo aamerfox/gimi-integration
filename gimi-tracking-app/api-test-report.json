@@ -1,0 +1,85 @@
+{
+  "runAt": "2026-02-23T17:22:26.740Z",
+  "utcTimestamp": "2026-02-23 17:22:26",
+  "account": "GBH2025",
+  "endpoint": "https://eu-open.tracksolidpro.com/route/rest",
+  "summary": {
+    "pass": 6,
+    "warn": 4,
+    "fail": 0,
+    "skip": 0,
+    "total": 10
+  },
+  "results": [
+    {
+      "id": "T01",
+      "name": "Authentication (jimi.oauth.token.get)",
+      "status": "PASS",
+      "code": "0",
+      "note": "Token: 19bd4ae61d61150a0cb3995baabdb934  |  Endpoint: https://eu-open.tracksolidpro.com/route/rest"
+    },
+    {
+      "id": "T02",
+      "name": "Device List (jimi.user.device.list)",
+      "status": "PASS",
+      "code": "0",
+      "note": "1 device(s). First IMEI: 780901703187828"
+    },
+    {
+      "id": "T03",
+      "name": "Live Locations (jimi.user.device.location.list)",
+      "status": "PASS",
+      "code": "0",
+      "note": "1 device location(s). Sample: lat=24.816437, lng=46.654068, speed=nullkm/h, posType=BEACON"
+    },
+    {
+      "id": "T04",
+      "name": "Track History (jimi.device.track.list)",
+      "status": "PASS",
+      "code": "0",
+      "note": "145 GPS point(s) in last 24h for 780901703187828"
+    },
+    {
+      "id": "T05",
+      "name": "Geofence List (jimi.open.platform.fence.list)",
+      "status": "PASS",
+      "code": "0",
+      "note": "0 platform fence(s) found"
+    },
+    {
+      "id": "T06",
+      "name": "Device Fence Create",
+      "status": "WARN",
+      "code": "12003",
+      "note": "创建电子围栏失败，结果码：41005"
+    },
+    {
+      "id": "T07",
+      "name": "Platform Fence Create",
+      "status": "WARN",
+      "code": "undefined",
+      "note": "Required String parameter 'geom' is not present"
+    },
+    {
+      "id": "T08",
+      "name": "Device Alarms",
+      "status": "WARN",
+      "code": "1001",
+      "note": "缺少方法名参数或不存在的方法名"
+    },
+    {
+      "id": "T09",
+      "name": "All-Device Alarms",
+      "status": "WARN",
+      "code": "1001",
+      "note": "缺少方法名参数或不存在的方法名"
+    },
+    {
+      "id": "T10",
+      "name": "MD5 Signature",
+      "status": "PASS",
+      "code": "-",
+      "note": "sig=533854127CE448FE65B4A02B6559D62A  valid=true"
+    }
+  ]
+}
