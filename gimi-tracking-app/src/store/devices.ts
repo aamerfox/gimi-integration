@@ -45,7 +45,14 @@ export const useDeviceStore = create<DeviceState>()((set, get) => ({
         const { devices } = get();
         const updated = devices.map((dev) => {
             const loc = locations.find((l) => l.imei === dev.imei);
-            if (loc) return { ...dev, ...loc };
+            if (loc) {
+                return {
+                    ...dev,
+                    ...loc,
+                    deviceName: dev.deviceName, // Prevent location payload from overwriting actual name
+                    icon: dev.icon
+                };
+            }
             return dev;
         });
         set({ devices: updated });
