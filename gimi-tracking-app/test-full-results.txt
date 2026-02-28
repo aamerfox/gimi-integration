@@ -1,15 +1,15 @@
 ============================================================
   GIMI / TrackSolid Pro - Full API Integration Test
 ============================================================
-Time: 2026-02-21T07:02:20.909Z
+Time: 2026-02-27T20:55:00.254Z
 Endpoint: https://eu-open.tracksolidpro.com/route/rest
 Account: GBH2025
 
 --- TEST 1: LOGIN ---
   PASS: Login successful!
-  accessToken: 3b7d56c2e369861be7a386c6393812...
+  accessToken: df0242f53049bf3425c639e4924a1e...
   expiresIn: 7200 seconds
-  refreshToken: 3ac0c65947044eceaf970e74f7a6b5...
+  refreshToken: 81a2263ad33c1a979037fc9e89a647...
 
 --- TEST 2: DEVICE LIST ---
   PASS: 1 devices found
@@ -17,13 +17,13 @@ Account: GBH2025
 
 --- TEST 3: DEVICE LOCATIONS ---
   PASS: 1 device locations
-    1. IMEI: 780901703187828 | Lat: 24.816776 | Lng: 46.653854 | Speed: null km/h | GPS: 2026-02-21 05:47:40 | Status: 0
+    1. IMEI: 780901703187828 | Lat: 24.81646 | Lng: 46.65405 | Speed: null km/h | GPS: 2026-02-27 18:35:28 | Status: 0
 
 --- TEST 4: TRACK HISTORY (IMEI: 780901703187828, last 24h) ---
-  Range: 2026-02-20 07:02:21 -> 2026-02-21 07:02:21
-  PASS: 121 track points
-    First: Lat=24.816778, Lng=46.653835, Speed=undefined, Time=2026-02-20 08:28:36
-    Last:  Lat=24.816776, Lng=46.653854, Speed=undefined, Time=2026-02-21 05:47:40
+  Range: 2026-02-26 20:55:01 -> 2026-02-27 20:55:01
+  PASS: 33 track points
+    First: Lat=24.816706, Lng=46.653957, Speed=undefined, Time=2026-02-26 21:29:16
+    Last:  Lat=24.81646, Lng=46.65405, Speed=undefined, Time=2026-02-27 18:35:28
 
 --- TEST 5: GEOFENCES ---
   PASS: 0 geofences

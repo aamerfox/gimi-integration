@@ -15,9 +15,11 @@ interface RawAlarm {
     imei?: string;
     alarmType?: string;
     alertType?: string;
+    alertTypeId?: string;
     type?: string;
     alarmDesc?: string;
     alarmName?: string;
+    alarmTypeName?: string;
     desc?: string;
     lat?: number;
     lng?: number;
@@ -73,6 +75,17 @@ const FILTERS = [
     { key: 'offline', label: 'Offline' },
 ];
 
+function useIsMobile() {
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+    useEffect(() => {
+        const mq = window.matchMedia('(max-width: 768px)');
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
+    return isMobile;
+}
+
 export default function Alerts() {
     const { accessToken, userId } = useAuthStore();
     const { devices } = useDeviceStore();
@@ -83,6 +96,7 @@ export default function Alerts() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState('all');
+    const isMobile = useIsMobile();
 
     // Add-rule modal state
     const [showAddRule, setShowAddRule] = useState(false);
@@ -173,17 +187,26 @@ export default function Alerts() {
                 }
             }
 
-            const parsed: Alarm[] = allAlarms.map((a: RawAlarm) => ({
-                alarmId: a.alarmId || a.id || `${a.imei}-${a.gpsTime}-${Math.random()}`,
-                imei: a.imei || '',
-                alarmType: a.alarmType || a.alertType || a.type || '',
-                alarmDesc: a.alarmDesc || a.alarmName || a.desc || a.alarmType || '',
-                lat: a.lat || 0,
-                lng: a.lng || 0,
-                speed: a.speed || 0,
-                gpsTime: a.gpsTime || a.alertTime || a.time || '',
-                deviceName: a.deviceName || devices.find((d: Device) => d.imei === a.imei)?.deviceName || a.imei,
-            }));
+            const parsed: Alarm[] = allAlarms.map((a: RawAlarm) => {
+                let type = a.alertTypeId || a.alarmType || a.alertType || a.type || '';
+                // map TSP specific type IDs
+                if (type === 'in') type = 'geofenceIn';
+                if (type === 'out') type = 'geofenceOut';
+
+                const desc = a.alarmTypeName || a.alarmDesc || a.alarmName || a.desc || type || '';
+
+                return {
+                    alarmId: a.alarmId || a.id || `${a.imei}-${a.gpsTime || a.alertTime}-${Math.random()}`,
+                    imei: a.imei || '',
+                    alarmType: type,
+                    alarmDesc: desc,
+                    lat: Number(a.lat) || 0,
+                    lng: Number(a.lng) || 0,
+                    speed: Number(a.speed) || 0,
+                    gpsTime: a.gpsTime || a.alertTime || a.time || '',
+                    deviceName: a.deviceName || devices.find((d: Device) => d.imei === a.imei)?.deviceName || a.imei,
+                };
+            });
             // Sort by time descending
             parsed.sort((a, b) => b.gpsTime.localeCompare(a.gpsTime));
             setAlarms(parsed);
@@ -216,7 +239,7 @@ export default function Alerts() {
     };
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '20px', overflow: 'auto' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: isMobile ? '12px' : '20px', overflow: 'auto' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
                 <h2 style={{ fontSize: '18px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -241,7 +264,7 @@ export default function Alerts() {
                     background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                    <div className="glass-panel" style={{ width: 440, padding: '24px', borderRadius: 'var(--radius-lg)', maxHeight: '90vh', overflowY: 'auto' }}>
+                    <div className="glass-panel" style={{ width: isMobile ? 'calc(100vw - 24px)' : 440, padding: '24px', borderRadius: 'var(--radius-lg)', maxHeight: '90vh', overflowY: 'auto' }}>
                         {/* Modal header */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                             <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Add Alert Rule</h3>
@@ -460,7 +483,7 @@ export default function Alerts() {
                                             {' '}<strong>{evt.fenceName}</strong>
                                         </div>
                                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                            {evt.deviceName} · {evt.lat.toFixed(5)}, {evt.lng.toFixed(5)}
+                                            {evt.deviceName} · {Number(evt.lat || 0).toFixed(5)}, {Number(evt.lng || 0).toFixed(5)}
                                         </div>
                                     </div>
 
@@ -550,34 +573,70 @@ export default function Alerts() {
                     </div>
                 ) : (
                     <>
-                        {/* Table header */}
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: '40px 1.5fr 1fr 1fr 80px 1.2fr',
-                            padding: '10px 16px',
-                            borderBottom: '1px solid var(--border)',
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            color: 'var(--text-muted)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            position: 'sticky',
-                            top: 0,
-                            background: 'var(--bg-secondary)',
-                            zIndex: 1,
-                        }}>
-                            <div></div>
-                            <div>Alert</div>
-                            <div>Device</div>
-                            <div>Type</div>
-                            <div>Speed</div>
-                            <div>Time</div>
-                        </div>
+                        {/* Table header — desktop only */}
+                        {!isMobile && (
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '40px 1.5fr 1fr 1fr 80px 1.2fr',
+                                padding: '10px 16px',
+                                borderBottom: '1px solid var(--border)',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                color: 'var(--text-muted)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                position: 'sticky',
+                                top: 0,
+                                background: 'var(--bg-secondary)',
+                                zIndex: 1,
+                            }}>
+                                <div></div>
+                                <div>Alert</div>
+                                <div>Device</div>
+                                <div>Type</div>
+                                <div>Speed</div>
+                                <div>Time</div>
+                            </div>
+                        )}
 
                         {/* Rows */}
                         {filteredAlarms.map((alarm) => {
                             const meta = getAlarmMeta(alarm.alarmType);
-                            return (
+                            return isMobile ? (
+                                /* ── Mobile: card layout ── */
+                                <div
+                                    key={alarm.alarmId}
+                                    style={{
+                                        padding: '12px 16px',
+                                        borderBottom: '1px solid var(--border)',
+                                        display: 'flex',
+                                        gap: '12px',
+                                        alignItems: 'flex-start',
+                                    }}
+                                >
+                                    <div style={{ fontSize: '20px', flexShrink: 0, marginTop: '2px' }}>{meta.icon}</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 600 }}>{alarm.alarmDesc || meta.label}</span>
+                                            <span style={{
+                                                display: 'inline-block', padding: '1px 7px',
+                                                borderRadius: '20px', fontSize: '10px', fontWeight: 600,
+                                                background: `${severityColor(meta.severity)}18`,
+                                                color: severityColor(meta.severity),
+                                                border: `1px solid ${severityColor(meta.severity)}30`,
+                                            }}>{meta.label}</span>
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
+                                            {alarm.deviceName}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                                            {alarm.speed > 0 && <span>🚗 {alarm.speed} km/h</span>}
+                                            <span>🕐 {alarm.gpsTime}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* ── Desktop: grid row layout ── */
                                 <div
                                     key={alarm.alarmId}
                                     style={{
@@ -592,28 +651,18 @@ export default function Alerts() {
                                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
                                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                                 >
-                                    {/* Icon */}
                                     <div style={{ fontSize: '16px' }}>{meta.icon}</div>
-
-                                    {/* Description */}
                                     <div>
                                         <div style={{ fontSize: '13px', fontWeight: 500 }}>{alarm.alarmDesc || meta.label}</div>
                                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                            {alarm.lat.toFixed(4)}, {alarm.lng.toFixed(4)}
+                                            {Number(alarm.lat || 0).toFixed(4)}, {Number(alarm.lng || 0).toFixed(4)}
                                         </div>
                                     </div>
-
-                                    {/* Device */}
                                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{alarm.deviceName}</div>
-
-                                    {/* Severity badge */}
                                     <div>
                                         <span style={{
-                                            display: 'inline-block',
-                                            padding: '2px 8px',
-                                            borderRadius: '20px',
-                                            fontSize: '10px',
-                                            fontWeight: 600,
+                                            display: 'inline-block', padding: '2px 8px',
+                                            borderRadius: '20px', fontSize: '10px', fontWeight: 600,
                                             background: `${severityColor(meta.severity)}18`,
                                             color: severityColor(meta.severity),
                                             border: `1px solid ${severityColor(meta.severity)}30`,
@@ -621,13 +670,9 @@ export default function Alerts() {
                                             {meta.label}
                                         </span>
                                     </div>
-
-                                    {/* Speed */}
                                     <div style={{ fontSize: '12px', fontWeight: 500 }}>
                                         {alarm.speed > 0 ? `${alarm.speed} km/h` : '—'}
                                     </div>
-
-                                    {/* Time */}
                                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{alarm.gpsTime}</div>
                                 </div>
                             );

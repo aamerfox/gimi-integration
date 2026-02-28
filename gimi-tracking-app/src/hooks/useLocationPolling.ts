@@ -24,7 +24,7 @@ export function useLocationPolling(intervalMs = 15000) {
     const fetchDevices = useCallback(async () => {
         if (!accessToken || !userId) return;
         try {
-            const res = await gimiService.getDeviceList(accessToken, userId) as ApiResponse<Device[]>;
+            const res = await gimiService.getDeviceList(accessToken, userId) as unknown as ApiResponse<Device[]>;
             if (res?.result && Array.isArray(res.result)) {
                 setDevices(res.result);
             }
@@ -36,7 +36,7 @@ export function useLocationPolling(intervalMs = 15000) {
     const fetchLocations = useCallback(async () => {
         if (!accessToken || !userId) return;
         try {
-            const res = await gimiService.getDevicesLocation(accessToken, userId) as ApiResponse<Partial<Device>[]>;
+            const res = await gimiService.getDevicesLocation(accessToken, userId) as unknown as ApiResponse<Partial<Device>[]>;
             if (res?.result && Array.isArray(res.result)) {
                 updateDeviceLocations(res.result);
             }

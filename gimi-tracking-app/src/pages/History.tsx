@@ -5,6 +5,7 @@ import type { Device } from '../store/devices';
 import { gimiService } from '../services/gimi';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MapZoomControls from '../components/MapZoomControls';
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -53,13 +54,23 @@ export default function History() {
         const map = L.map(containerRef.current, {
             center: [24.7136, 46.6753],
             zoom: 6,
-            zoomControl: true,
+            zoomControl: false,
         });
         L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 18 }).addTo(map);
         mapRef.current = map;
+
+        const resizeObserver = new ResizeObserver(() => {
+            map.invalidateSize();
+        });
+        resizeObserver.observe(containerRef.current);
+
         // Force tile reload after container is measured
         setTimeout(() => map.invalidateSize(), 100);
-        return () => { map.remove(); mapRef.current = null; };
+        return () => {
+            resizeObserver.disconnect();
+            map.remove();
+            mapRef.current = null;
+        };
     }, []);
 
     const loadTrack = useCallback(async () => {
@@ -73,7 +84,7 @@ export default function History() {
         try {
             const sTime = startTime.replace('T', ' ') + ':00';
             const eTime = endTime.replace('T', ' ') + ':00';
-            const res = await gimiService.getTrackHistory(accessToken, selectedImei, sTime, eTime) as { result: TrackPoint[] | null };
+            const res = await gimiService.getTrackHistory(accessToken, selectedImei, sTime, eTime) as unknown as { result: TrackPoint[] | null };
             if (res?.result && Array.isArray(res.result)) {
                 const points: TrackPoint[] = res.result.map((p) => ({
                     lat: p.lat,
@@ -179,6 +190,7 @@ export default function History() {
         <div style={{ position: 'relative', height: '100vh', display: 'flex', flexDirection: 'column' }}>
             {/* Map */}
             <div ref={containerRef} style={{ flex: 1, minHeight: 0, height: '100%' }} />
+            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: track.length > 0 ? '84px' : '24px', right: '16px' }} />
 
             {/* Floating controls - top left */}
             <div
@@ -187,7 +199,7 @@ export default function History() {
                     position: 'absolute',
                     top: 16,
                     left: 16,
-                    width: 300,
+                    width: 340,
                     padding: '16px',
                     zIndex: 1000,
                 }}
@@ -209,14 +221,14 @@ export default function History() {
                     ))}
                 </select>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                     <div>
-                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>From</label>
-                        <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="sx-input" style={{ fontSize: '12px', padding: '6px 8px', marginTop: '4px' }} />
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>From</label>
+                        <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="sx-input" style={{ fontSize: '12px', padding: '6px 8px', marginTop: '4px', width: '100%', boxSizing: 'border-box' }} />
                     </div>
                     <div>
-                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>To</label>
-                        <input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="sx-input" style={{ fontSize: '12px', padding: '6px 8px', marginTop: '4px' }} />
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>To</label>
+                        <input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="sx-input" style={{ fontSize: '12px', padding: '6px 8px', marginTop: '4px', width: '100%', boxSizing: 'border-box' }} />
                     </div>
                 </div>
 

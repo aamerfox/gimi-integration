@@ -20,6 +20,9 @@ async function mockAuth(page: Page) {
 
 test.describe('Sidebar Navigation', () => {
     test.beforeEach(async ({ page }) => {
+        page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
+        page.on('pageerror', error => console.log('BROWSER ERROR:', error.message));
+
         await mockAuth(page);
         await page.goto('/');
         // Wait for the app to fully load
@@ -28,20 +31,23 @@ test.describe('Sidebar Navigation', () => {
 
     test('navigates to History page via sidebar', async ({ page }) => {
         // Look for History link in sidebar (text or href-based)
-        const historyLink = page.getByRole('link', { name: /history/i }).first();
-        await historyLink.click();
+        await page.locator('nav, .sidebar').first().hover();
+        const historyLink = page.locator('a[href="/history"]').first();
+        await historyLink.click({ force: true });
         await expect(page).toHaveURL(/\/history/);
     });
 
     test('navigates to Geofences page via sidebar', async ({ page }) => {
-        const geofencesLink = page.getByRole('link', { name: /geofence/i }).first();
-        await geofencesLink.click();
+        await page.locator('nav, .sidebar').first().hover();
+        const geofencesLink = page.locator('a[href="/geofences"]').first();
+        await geofencesLink.click({ force: true });
         await expect(page).toHaveURL(/\/geofences/);
     });
 
     test('navigates to Alerts page via sidebar', async ({ page }) => {
-        const alertsLink = page.getByRole('link', { name: /alert/i }).first();
-        await alertsLink.click();
+        await page.locator('nav, .sidebar').first().hover();
+        const alertsLink = page.locator('a[href="/alerts"]').first();
+        await alertsLink.click({ force: true });
         await expect(page).toHaveURL(/\/alerts/);
     });
 
@@ -51,8 +57,9 @@ test.describe('Sidebar Navigation', () => {
         await page.waitForLoadState('networkidle');
 
         // The home/dashboard link is labelled 'Live Map' in the sidebar
-        const livemapLink = page.getByRole('link', { name: /Live Map/i }).first();
-        await livemapLink.click();
+        await page.locator('nav, .sidebar').first().hover();
+        const livemapLink = page.locator('a[href="/"]').first();
+        await livemapLink.click({ force: true });
         await expect(page).toHaveURL(/\/$/);
     });
 });

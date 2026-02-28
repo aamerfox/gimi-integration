@@ -1,8 +1,13 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useDeviceStore } from '../store/devices';
 import type { Device } from '../store/devices';
+
+export interface LiveMapHandle {
+    zoomIn: () => void;
+    zoomOut: () => void;
+}
 
 // OpenStreetMap dark tile layer
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -48,7 +53,7 @@ function createMarkerIcon(isOnline: boolean, isSelected: boolean) {
     });
 }
 
-export default function LiveMap() {
+const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
     const mapRef = useRef<L.Map | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -62,14 +67,20 @@ export default function LiveMap() {
         const map = L.map(containerRef.current, {
             center: [24.7136, 46.6753], // Riyadh
             zoom: 6,
-            zoomControl: true,
+            zoomControl: false,  // We render our own zoom buttons in Dashboard
             attributionControl: true,
         });
 
         L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 18 }).addTo(map);
         mapRef.current = map;
 
+        const resizeObserver = new ResizeObserver(() => {
+            map.invalidateSize();
+        });
+        resizeObserver.observe(containerRef.current);
+
         return () => {
+            resizeObserver.disconnect();
             map.remove();
             mapRef.current = null;
         };
@@ -100,7 +111,7 @@ export default function LiveMap() {
             const isOnline = device.status === '1' || device.posType === 'GPS';
             const isSelected = selectedDevice?.imei === device.imei;
             const icon = createMarkerIcon(isOnline, isSelected);
-            const position: L.LatLngExpression = [device.lat, device.lng];
+            const position: L.LatLngExpression = [device.lat as number, device.lng as number];
 
             const existing = markersRef.current.get(device.imei);
             if (existing) {
@@ -119,7 +130,7 @@ export default function LiveMap() {
                             <span style="width:6px;height:6px;border-radius:50%;background:${isOnline ? '#22c55e' : '#6b7280'}"></span>
                             <span style="font-size:12px;color:${isOnline ? '#22c55e' : '#6b7280'}">${isOnline ? 'Online' : 'Offline'}</span>
                         </div>
-                        <div style="font-size:12px;color:#94a3b8">${device.lat.toFixed(5)}, ${device.lng.toFixed(5)}</div>
+                        <div style="font-size:12px;color:#94a3b8">${(device.lat || 0).toFixed(5)}, ${(device.lng || 0).toFixed(5)}</div>
                         ${device.gpsTime ? `<div style="font-size:11px;color:#64748b;margin-top:4px">${device.gpsTime}</div>` : ''}
                     </div>
                 `;
@@ -139,10 +150,17 @@ export default function LiveMap() {
         }
     }, [selectedDevice]);
 
+    useImperativeHandle(ref, () => ({
+        zoomIn: () => mapRef.current?.zoomIn(),
+        zoomOut: () => mapRef.current?.zoomOut(),
+    }));
+
     return (
         <div
             ref={containerRef}
             style={{ width: '100%', height: '100%' }}
         />
     );
-}
+});
+
+export default LiveMap;

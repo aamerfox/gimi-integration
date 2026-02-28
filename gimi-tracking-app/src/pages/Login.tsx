@@ -1,4 +1,5 @@
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MD5 from 'crypto-js/md5';
 import { gimiService } from '../services/gimi';
@@ -206,7 +207,7 @@ export default function Login() {
 
                 {/* Footer */}
                 <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px', marginTop: '24px' }}>
-                    Powered by TrackSolid Pro
+                    Powered by SaudiEx
                 </p>
             </form>
         </div>

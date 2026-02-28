@@ -5,6 +5,7 @@ import { useGeofenceStore, FENCE_COLORS } from '../store/geofences';
 import type { LocalGeofence } from '../store/geofences';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MapZoomControls from '../components/MapZoomControls';
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -43,7 +44,7 @@ export default function Geofences() {
     // ── Init map ──────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
-        const map = L.map(containerRef.current, { center: [24.7136, 46.6753], zoom: 6, zoomControl: true });
+        const map = L.map(containerRef.current, { center: [24.7136, 46.6753], zoom: 6, zoomControl: false });
         L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 19 }).addTo(map);
         mapRef.current = map;
         setTimeout(() => { map.invalidateSize(); setMapReady(true); }, 150);
@@ -223,6 +224,7 @@ export default function Geofences() {
         <div style={{ position: 'relative', height: '100vh', overflow: 'hidden' }}>
             {/* Map */}
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
 
             {/* ─── Left panel: Geofence list ─────────────────────────────── */}
             <div

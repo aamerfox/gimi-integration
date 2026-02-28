@@ -17,11 +17,13 @@ const generateSign = (params: Record<string, string | number | boolean>) => {
     return MD5(paramString).toString().toUpperCase();
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fetchGimiApi = async (method: string, extraParams: any) => {
     const pad = (n: number) => n < 10 ? `0${n}` : n;
     const now = new Date();
     const timestamp = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any = {
         app_key: APP_KEY,
         format: 'json',
@@ -39,8 +41,10 @@ const fetchGimiApi = async (method: string, extraParams: any) => {
         .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
         .join('&');
 
-    // Use relative path to hit Nginx proxy
-    const res = await fetch(`/token?${queryString}`, {
+    const BASE_URL = import.meta.env.DEV ? '/api' : '/token';
+
+    // Use relative path to hit Nginx or Vite proxy
+    const res = await fetch(`${BASE_URL}?${queryString}`, {
         method: 'GET'
     });
     return res.json();
@@ -49,6 +53,7 @@ const fetchGimiApi = async (method: string, extraParams: any) => {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Lock } from 'lucide-react';
+import MapZoomControls from '../components/MapZoomControls';
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -92,6 +97,7 @@ export default function ViewShare() {
         const params = validateShareUrl(queryStr);
 
         if (!params) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setError('This link is invalid or has expired.');
             setLoading(false);
             return;
@@ -102,14 +108,14 @@ export default function ViewShare() {
         const map = L.map(containerRef.current!, {
             center: [24.7136, 46.6753], // Default Riyadh
             zoom: 12,
-            zoomControl: true,
+            zoomControl: false,
         });
         L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 18 }).addTo(map);
         mapRef.current = map;
 
         const icon = createMarkerIcon();
         const marker = L.marker([24.7136, 46.6753], { icon }).addTo(map);
-        marker.bindPopup(`<b>${params.name}</b><br>Loading live location...`);
+        marker.bindPopup(`<b>${params.name}</b><br>Loading live location...`).openPopup();
         markerRef.current = marker;
 
         // Start polling
@@ -125,11 +131,13 @@ export default function ViewShare() {
                 // If jimi.device.location.get is not permitted, fallback to getTrackList
                 let lat = 0;
                 let lng = 0;
+                let speed = 0;
                 let updated = false;
 
                 if (data && data.code === 0 && Array.isArray(data.result) && data.result.length > 0) {
                     lat = parseFloat(data.result[0].lat);
                     lng = parseFloat(data.result[0].lng);
+                    speed = parseFloat(data.result[0].speed || '0');
                     updated = true;
                 } else {
                     // Fallback to getTrackHistory last 10 minutes
@@ -149,6 +157,7 @@ export default function ViewShare() {
                         const lastPoint = trackData.result[trackData.result.length - 1];
                         lat = parseFloat(lastPoint.lat);
                         lng = parseFloat(lastPoint.lng);
+                        speed = parseFloat(lastPoint.speed || '0');
                         updated = true;
                     }
                 }
@@ -160,11 +169,15 @@ export default function ViewShare() {
                         <div style="min-width:140px; font-family:sans-serif;">
                             <b style="color:#0f172a; font-size:14px;">${params.name}</b>
                             <div style="font-size:11px; color:#64748b; margin-top:4px;">
-                                ${lat.toFixed(5)}, ${lng.toFixed(5)}
+                                Speed: ${speed} km/h<br/>
+                                <span style="font-size:9px">Updated: ${new Date().toLocaleTimeString()}</span>
                             </div>
                         </div>
                     `);
                     mapRef.current?.flyTo(newPos, 15, { duration: 1 });
+                    if (!markerRef.current?.isPopupOpen()) {
+                        markerRef.current?.openPopup();
+                    }
                     setLoading(false);
                 }
             } catch (err) {
@@ -233,6 +246,7 @@ export default function ViewShare() {
             </div>
 
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
         </div>
     );
 }

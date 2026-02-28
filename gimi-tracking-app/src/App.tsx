@@ -8,6 +8,8 @@ import AlertsPage from '@/pages/Alerts';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useThemeStore } from '@/store/theme';
+import ViewShare from '@/pages/ViewShare';
+import ShareManage from '@/pages/ShareManage';
 
 function App() {
   const { theme } = useThemeStore();
@@ -21,6 +23,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/share" element={<ViewShare />} />
 
         {/* Protected Dashboard Routes */}
         <Route element={<ProtectedRoute />}>
@@ -29,6 +32,7 @@ function App() {
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/geofences" element={<GeofencesPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/share-manage" element={<ShareManage />} />
           </Route>
         </Route>
 

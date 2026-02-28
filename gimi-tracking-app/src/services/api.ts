@@ -3,8 +3,14 @@ import MD5 from 'crypto-js/md5';
 import { useAuthStore } from '../store/auth';
 
 // TrackSolid Pro Open API (EU node)
-// Proxied through Nginx on the live DigitalOcean server
-const BASE_URL = 'http://68.183.73.150/token';
+// In development (npm run dev), use Vite's proxy (/api) to bypass CORS.
+// In production (built to /var/www/html), point to the Nginx reverse proxy (/token).
+import { Capacitor } from '@capacitor/core';
+
+let BASE_URL = import.meta.env.DEV ? '/api' : '/token';
+if (Capacitor.isNativePlatform()) {
+    BASE_URL = 'https://saudiex-tracker-256825749353.europe-west10.run.app/token';
+}
 
 // App Credentials from Documentation
 const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
