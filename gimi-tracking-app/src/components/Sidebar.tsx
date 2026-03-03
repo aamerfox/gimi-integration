@@ -2,12 +2,14 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useThemeStore } from '../store/theme';
+import { useTranslation } from 'react-i18next';
 import { useGeofenceEventStore } from '../store/geofenceEvents';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 const navItems = [
     {
         to: '/',
-        label: 'Live Map',
+        labelKey: 'nav.map',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="10" r="3" /><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7 11.5 7.3 11.8a1 1 0 0 0 1.4 0C13 21.5 20 15.4 20 10a8 8 0 0 0-8-8z" />
@@ -16,7 +18,7 @@ const navItems = [
     },
     {
         to: '/history',
-        label: 'History',
+        labelKey: 'nav.history',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
@@ -25,7 +27,7 @@ const navItems = [
     },
     {
         to: '/geofences',
-        label: 'Geofences',
+        labelKey: 'nav.geofences',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
@@ -34,7 +36,7 @@ const navItems = [
     },
     {
         to: '/alerts',
-        label: 'Alerts',
+        labelKey: 'nav.alerts',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -43,7 +45,7 @@ const navItems = [
     },
     {
         to: '/share-manage',
-        label: 'Share',
+        labelKey: 'nav.share',
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
@@ -69,6 +71,7 @@ export default function Sidebar() {
     const navigate = useNavigate();
     const { userId, logout } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
+    const { t } = useTranslation();
     const { events } = useGeofenceEventStore();
     const unreadCount = events.filter(e => !e.read).length;
     const isLight = theme === 'light';
@@ -110,7 +113,7 @@ export default function Sidebar() {
                                     </span>
                                 )}
                             </span>
-                            <span style={{ fontSize: '9px', marginTop: '2px' }}>{item.label}</span>
+                            <span style={{ fontSize: '9px', marginTop: '2px' }}>{t(item.labelKey)}</span>
                         </NavLink>
                     ))}
 
@@ -175,8 +178,11 @@ export default function Sidebar() {
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                                 </svg>
-                                Logout
+                                {t('auth.login')}
                             </button>
+                            <div style={{ padding: '0 12px' }}>
+                                <LanguageSwitcher />
+                            </div>
                         </div>
                     </>
                 )}
@@ -267,11 +273,13 @@ export default function Sidebar() {
                             )}
                         </span>
                         <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 0.2s ease' }}>
-                            {item.label}
+                            {t(item.labelKey)}
                             {item.to === '/alerts' && unreadCount > 0 && (
                                 <span style={{
-                                    marginLeft: 6, background: 'var(--danger)', color: '#fff',
-                                    fontSize: '9px', fontWeight: 700, borderRadius: '999px', padding: '1px 5px',
+                                    display: 'inline-block',
+                                    marginInlineStart: 6, background: 'var(--danger)', color: '#fff',
+                                    fontSize: '9px', fontWeight: 700,
+                                    padding: '1px 6px', borderRadius: '4px'
                                 }}>{unreadCount}</span>
                             )}
                         </span>
@@ -316,7 +324,7 @@ export default function Sidebar() {
                         </svg>
                     )}
                     <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 0.2s ease' }}>
-                        {isLight ? 'Dark Mode' : 'Light Mode'}
+                        {isLight ? t('settings.theme') : t('settings.theme')}
                     </span>
                 </button>
 
@@ -337,9 +345,14 @@ export default function Sidebar() {
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
                     <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 0.2s ease' }}>
-                        Logout
+                        {t('auth.login')}
                     </span>
                 </button>
+                {expanded && (
+                    <div style={{ padding: '8px 4px', marginTop: '8px', borderTop: '1px solid var(--border)' }}>
+                        <LanguageSwitcher />
+                    </div>
+                )}
             </div>
         </aside>
     );

@@ -9,14 +9,17 @@ export interface LiveMapHandle {
     zoomOut: () => void;
 }
 
-// OpenStreetMap dark tile layer
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+const GOOGLE_STREET_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
+const GOOGLE_SATELLITE_URL = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+const GOOGLE_SATELLITE_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
+const GOOGLE_HYBRID_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+const GOOGLE_HYBRID_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
 
 function createMarkerIcon(isOnline: boolean, isSelected: boolean) {
     const size = isSelected ? 40 : 32;
-    const color = isOnline ? '#00d4aa' : '#6b7280';
-    const glowColor = isOnline ? 'rgba(0,212,170,0.3)' : 'rgba(107,114,128,0.2)';
+    const color = isOnline ? '#00d4aa' : '#00d4aa'; // Changed to green for both
+    const glowColor = isOnline ? 'rgba(0,212,170,0.3)' : 'rgba(0,212,170,0.15)';
     const pulse = isOnline ? `animation: pulse-glow 2s ease-in-out infinite;` : '';
 
     return L.divIcon({
@@ -64,14 +67,25 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
 
+        const streetLayer = L.tileLayer(GOOGLE_STREET_URL, { attribution: GOOGLE_STREET_ATTR, maxZoom: 18 });
+        const satelliteLayer = L.tileLayer(GOOGLE_SATELLITE_URL, { attribution: GOOGLE_SATELLITE_ATTR, maxZoom: 18 });
+        const hybridLayer = L.tileLayer(GOOGLE_HYBRID_URL, { attribution: GOOGLE_HYBRID_ATTR, maxZoom: 18 });
+
+        const baseMaps = {
+            "Google Streets": streetLayer,
+            "Google Satellite": satelliteLayer,
+            "Google Hybrid": hybridLayer
+        };
+
         const map = L.map(containerRef.current, {
             center: [24.7136, 46.6753], // Riyadh
             zoom: 6,
             zoomControl: false,  // We render our own zoom buttons in Dashboard
             attributionControl: true,
+            layers: [streetLayer] // Default to street
         });
 
-        L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 18 }).addTo(map);
+        L.control.layers(baseMaps, undefined, { position: 'topleft' }).addTo(map);
         mapRef.current = map;
 
         const resizeObserver = new ResizeObserver(() => {

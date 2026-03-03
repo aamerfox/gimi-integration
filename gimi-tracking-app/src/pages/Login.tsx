@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import MD5 from 'crypto-js/md5';
 import { gimiService } from '../services/gimi';
 import { useAuthStore } from '../store/auth';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 interface LoginResult {
     accessToken: string;
@@ -24,6 +26,7 @@ export default function Login() {
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const setAuth = useAuthStore((s) => s.setAuth);
+    const { t } = useTranslation();
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -46,7 +49,7 @@ export default function Login() {
                 navigate('/');
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Login failed');
+            setError(err instanceof Error ? err.message : t('auth.loginFailed'));
         } finally {
             setLoading(false);
         }
@@ -101,6 +104,11 @@ export default function Login() {
                 }} />
             </div>
 
+            {/* Language Switcher */}
+            <div style={{ position: 'absolute', top: '24px', insetInlineEnd: '24px', zIndex: 10 }}>
+                <LanguageSwitcher />
+            </div>
+
             {/* Login Card */}
             <form
                 onSubmit={handleSubmit}
@@ -139,7 +147,7 @@ export default function Login() {
                         Saudi<span style={{ color: 'var(--accent)' }}>Ex</span>
                     </h1>
                     <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                        Fleet Tracking Platform
+                        {t('auth.subtitle')}
                     </p>
                 </div>
 
@@ -162,27 +170,27 @@ export default function Login() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
                     <div>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Account ID
+                            {t('auth.accountId')}
                         </label>
                         <input
                             type="text"
                             value={account}
                             onChange={(e) => setAccount(e.target.value)}
                             className="sx-input"
-                            placeholder="Enter your account ID"
+                            placeholder={t('auth.accountIdPlaceholder')}
                             required
                         />
                     </div>
                     <div>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Password
+                            {t('auth.password')}
                         </label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="sx-input"
-                            placeholder="Enter your password"
+                            placeholder={t('auth.passwordPlaceholder')}
                             required
                         />
                     </div>
@@ -200,13 +208,13 @@ export default function Login() {
                             <svg width="18" height="18" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
                                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="31.4" strokeLinecap="round" />
                             </svg>
-                            Signing in...
+                            {t('auth.signingIn')}
                         </span>
-                    ) : 'Sign In'}
+                    ) : t('auth.signIn')}
                 </button>
 
                 {/* Footer */}
-                <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px', marginTop: '24px' }}>
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px', marginTop: '24px', direction: 'ltr' }}>
                     Powered by SaudiEx
                 </p>
             </form>

@@ -6,9 +6,12 @@ import type { LocalGeofence } from '../store/geofences';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapZoomControls from '../components/MapZoomControls';
+import { useTranslation } from 'react-i18next';
 
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+const GOOGLE_STREET_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
+const GOOGLE_SATELLITE_URL = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+const GOOGLE_SATELLITE_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
 
 type AlarmType = 'in' | 'out' | 'in,out';
 
@@ -21,6 +24,7 @@ export default function Geofences() {
     const [saving, setSaving] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
+    const { t } = useTranslation();
 
     // Form fields
     const [pickLat, setPickLat] = useState<number | null>(null);
@@ -44,8 +48,24 @@ export default function Geofences() {
     // ── Init map ──────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
-        const map = L.map(containerRef.current, { center: [24.7136, 46.6753], zoom: 6, zoomControl: false });
-        L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 19 }).addTo(map);
+
+        const streetLayer = L.tileLayer(GOOGLE_STREET_URL, { attribution: GOOGLE_STREET_ATTR, maxZoom: 19 });
+        const satelliteLayer = L.tileLayer(GOOGLE_SATELLITE_URL, { attribution: GOOGLE_SATELLITE_ATTR, maxZoom: 19 });
+
+        const baseMaps = {
+            "Google Streets": streetLayer,
+            "Google Satellite": satelliteLayer
+        };
+
+        const map = L.map(containerRef.current, {
+            center: [24.7136, 46.6753],
+            zoom: 6,
+            zoomControl: false,
+            layers: [streetLayer]
+        });
+
+        L.control.layers(baseMaps).addTo(map);
+
         mapRef.current = map;
         setTimeout(() => { map.invalidateSize(); setMapReady(true); }, 150);
 
@@ -69,7 +89,7 @@ export default function Geofences() {
         devices.forEach((device: Device) => {
             if (!device.lat || !device.lng) return;
             const online = device.status === '1';
-            const color = online ? '#00d4aa' : '#6b7280';
+            const color = online ? '#00d4aa' : '#00d4aa'; // Changed to green
             const icon = L.divIcon({
                 className: '',
                 iconSize: [22, 22],
@@ -77,7 +97,7 @@ export default function Geofences() {
                 html: `<div style="
                     width:22px;height:22px;border-radius:50%;
                     background:${color};border:3px solid #fff;
-                    box-shadow:0 0 12px ${online ? 'rgba(0,212,170,0.6)' : 'rgba(107,114,128,0.4)'};
+                    box-shadow:0 0 12px ${online ? 'rgba(0,212,170,0.6)' : 'rgba(0,212,170,0.3)'};
                 "></div>`,
             });
             const m = L.marker([device.lat, device.lng], { icon })
@@ -242,7 +262,7 @@ export default function Geofences() {
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
                                 <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
                             </svg>
-                            Geofences
+                            {t('nav.geofences')}
                         </h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span
@@ -282,8 +302,7 @@ export default function Geofences() {
                                 <line x1="12" y1="8" x2="12" y2="16" />
                                 <line x1="8" y1="12" x2="16" y2="12" />
                             </svg>
-                            <p style={{ fontSize: '13px', fontWeight: 500 }}>No geofences yet</p>
-                            <p style={{ fontSize: '11px', marginTop: '4px' }}>Click anywhere on the map to define a zone</p>
+                            <p style={{ fontSize: '13px', fontWeight: 500 }}>{t('common.noData')}</p>
                         </div>
                     ) : (
                         geofences.map((gf: LocalGeofence) => (
@@ -354,7 +373,7 @@ export default function Geofences() {
                                 </div>
 
                                 {/* Row 2: meta info */}
-                                <div style={{ marginTop: '6px', marginLeft: '20px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                <div style={{ marginTop: '6px', marginInlineStart: '20px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                     <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
                                         ⭕ {gf.radius}m
                                     </span>
@@ -372,7 +391,7 @@ export default function Geofences() {
                                     )}
                                 </div>
                                 {gf.description && (
-                                    <div style={{ marginTop: '4px', marginLeft: '20px', fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                    <div style={{ marginTop: '4px', marginInlineStart: '20px', fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                                         {gf.description}
                                     </div>
                                 )}

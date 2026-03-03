@@ -6,9 +6,14 @@ import { gimiService } from '../services/gimi';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapZoomControls from '../components/MapZoomControls';
+import { useTranslation } from 'react-i18next';
 
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+const GOOGLE_STREET_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
+const GOOGLE_SATELLITE_URL = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+const GOOGLE_SATELLITE_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
+const GOOGLE_HYBRID_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+const GOOGLE_HYBRID_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
 
 interface TrackPoint {
     lat: number;
@@ -27,6 +32,7 @@ export default function History() {
     const [track, setTrack] = useState<TrackPoint[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { t } = useTranslation();
 
     // Playback
     const [playing, setPlaying] = useState(false);
@@ -51,12 +57,25 @@ export default function History() {
     // Init map
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
+
+        const streetLayer = L.tileLayer(GOOGLE_STREET_URL, { attribution: GOOGLE_STREET_ATTR, maxZoom: 18 });
+        const satelliteLayer = L.tileLayer(GOOGLE_SATELLITE_URL, { attribution: GOOGLE_SATELLITE_ATTR, maxZoom: 18 });
+        const hybridLayer = L.tileLayer(GOOGLE_HYBRID_URL, { attribution: GOOGLE_HYBRID_ATTR, maxZoom: 18 });
+
+        const baseMaps = {
+            "Google Streets": streetLayer,
+            "Google Satellite": satelliteLayer,
+            "Google Hybrid": hybridLayer
+        };
+
         const map = L.map(containerRef.current, {
             center: [24.7136, 46.6753],
             zoom: 6,
             zoomControl: false,
+            layers: [streetLayer] // Default to street
         });
-        L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 18 }).addTo(map);
+
+        L.control.layers(baseMaps).addTo(map);
         mapRef.current = map;
 
         const resizeObserver = new ResizeObserver(() => {
@@ -206,7 +225,7 @@ export default function History() {
             >
                 <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                    Track History
+                    {t('nav.history')}
                 </h3>
 
                 <select
@@ -215,7 +234,7 @@ export default function History() {
                     className="sx-select"
                     style={{ marginBottom: '8px' }}
                 >
-                    <option value="">Select device...</option>
+                    <option value="">{t('common.selectDevice') || 'Select device...'}</option>
                     {devices.map((d: Device) => (
                         <option key={d.imei} value={d.imei}>{d.deviceName} ({d.imei})</option>
                     ))}
@@ -238,7 +257,7 @@ export default function History() {
                     className="sx-btn sx-btn-primary sx-btn-sm"
                     style={{ width: '100%' }}
                 >
-                    {loading ? 'Loading...' : `Load Track`}
+                    {loading ? t('common.loading') : `Load Track`}
                 </button>
 
                 {error && (
@@ -281,9 +300,9 @@ export default function History() {
                         style={{ width: 36, height: 36, flexShrink: 0 }}
                     >
                         {playing ? (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent)" stroke="none"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent)" stroke="none" style={{ transform: document.documentElement.dir === 'rtl' ? 'scaleX(-1)' : 'none' }}><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
                         ) : (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent)" stroke="none"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent)" stroke="none" style={{ transform: document.documentElement.dir === 'rtl' ? 'scaleX(-1)' : 'none' }}><polygon points="5 3 19 12 5 21 5 3" /></svg>
                         )}
                     </button>
 

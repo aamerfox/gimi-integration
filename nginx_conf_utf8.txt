@@ -1,0 +1,36 @@
+﻿server {
+    listen 80;
+    server_name 34.32.43.112; # Google Compute VM IP
+
+    # React App root
+    root /var/www/html;
+    index index.html index.htm;
+
+    # Gzip compression for performance
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    # Serve static files and fallback to index.html for React Router
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy API requests to TrackSolid Pro to bypass CORS
+    location /token {
+        proxy_pass https://eu-open.tracksolidpro.com/route/rest;
+        
+        proxy_set_header Host eu-open.tracksolidpro.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Disable proxy redirects to prevent Nginx from trying to rewrite URLs
+        proxy_redirect off;
+
+        # Important: Don't let Nginx interfere with the body or headers
+        proxy_set_header Content-Type "application/x-www-form-urlencoded";
+        
+        # SSL Config if backend requires SNI (TrackSolid Pro does)
+        proxy_ssl_server_name on;
+    }
+}

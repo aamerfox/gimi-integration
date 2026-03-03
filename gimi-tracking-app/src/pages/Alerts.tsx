@@ -8,6 +8,7 @@ import type { GeofenceEvent } from '../store/geofenceEvents';
 import { useAlertRuleStore } from '../store/alertRules';
 import type { AlertRuleType } from '../store/alertRules';
 import { useGeofenceStore } from '../store/geofences';
+import { useTranslation } from 'react-i18next';
 
 interface RawAlarm {
     alarmId?: string;
@@ -66,14 +67,7 @@ const getAlarmMeta = (type: string) => {
     return { label: type || 'Unknown', icon: '⚠️', severity: 'info' as const };
 };
 
-const FILTERS = [
-    { key: 'all', label: 'All' },
-    { key: 'geofence', label: 'Geofence' },
-    { key: 'overspeed', label: 'Speed' },
-    { key: 'sos', label: 'SOS' },
-    { key: 'battery', label: 'Battery' },
-    { key: 'offline', label: 'Offline' },
-];
+// Filters are now dynamically translated inside the component body
 
 function useIsMobile() {
     const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
@@ -97,6 +91,13 @@ export default function Alerts() {
     const [error, setError] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState('all');
     const isMobile = useIsMobile();
+    const { t } = useTranslation();
+
+    const FILTERS = [
+        { key: 'all', label: t('alertsFilters.all') },
+        { key: 'geofence', label: t('alertsFilters.geofence') },
+        { key: 'battery', label: t('alertsFilters.battery') },
+    ];
 
     // Add-rule modal state
     const [showAddRule, setShowAddRule] = useState(false);
@@ -244,15 +245,15 @@ export default function Alerts() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
                 <h2 style={{ fontSize: '18px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
-                    Alerts
+                    {t('nav.alerts')}
                 </h2>
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => setShowAddRule(true)} className="sx-btn sx-btn-primary sx-btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                        Add Alert
+                        {t('common.add')}
                     </button>
                     <button onClick={fetchAlarms} className="sx-btn sx-btn-ghost sx-btn-sm" disabled={isLoading}>
-                        {isLoading ? 'Loading...' : '↻ Refresh'}
+                        {isLoading ? t('common.loading') : `↻ ${t('common.refresh')}`}
                     </button>
                 </div>
             </div>
@@ -602,6 +603,26 @@ export default function Alerts() {
                         {/* Rows */}
                         {filteredAlarms.map((alarm) => {
                             const meta = getAlarmMeta(alarm.alarmType);
+
+                            // Intercept raw API English strings and translate them if possible
+                            const translateAlarmDesc = (desc: string) => {
+                                let translated = desc;
+
+                                // Match "Enter geo-fence" or "Exit geo-fence" followed by any optional brackets like "(Geo-fence 1)"
+                                const enterMatch = desc.match(/Enter geo-fence(\(.*\))?/i);
+                                const exitMatch = desc.match(/Exit geo-fence(\(.*\))?/i);
+
+                                if (enterMatch) {
+                                    const fenceName = enterMatch[1] || '';
+                                    translated = `${t('alertDesc.enterGeofence')} \u202A${fenceName}\u202C`;
+                                } else if (exitMatch) {
+                                    const fenceName = exitMatch[1] || '';
+                                    translated = `${t('alertDesc.exitGeofence')} \u202A${fenceName}\u202C`;
+                                }
+
+                                return translated;
+                            };
+
                             return isMobile ? (
                                 /* ── Mobile: card layout ── */
                                 <div
@@ -617,7 +638,7 @@ export default function Alerts() {
                                     <div style={{ fontSize: '20px', flexShrink: 0, marginTop: '2px' }}>{meta.icon}</div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                                            <span style={{ fontSize: '13px', fontWeight: 600 }}>{alarm.alarmDesc || meta.label}</span>
+                                            <span style={{ fontSize: '13px', fontWeight: 600 }}>{alarm.alarmDesc ? translateAlarmDesc(alarm.alarmDesc) : meta.label}</span>
                                             <span style={{
                                                 display: 'inline-block', padding: '1px 7px',
                                                 borderRadius: '20px', fontSize: '10px', fontWeight: 600,
@@ -653,7 +674,7 @@ export default function Alerts() {
                                 >
                                     <div style={{ fontSize: '16px' }}>{meta.icon}</div>
                                     <div>
-                                        <div style={{ fontSize: '13px', fontWeight: 500 }}>{alarm.alarmDesc || meta.label}</div>
+                                        <div style={{ fontSize: '13px', fontWeight: 500 }}>{alarm.alarmDesc ? translateAlarmDesc(alarm.alarmDesc) : meta.label}</div>
                                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                                             {Number(alarm.lat || 0).toFixed(4)}, {Number(alarm.lng || 0).toFixed(4)}
                                         </div>

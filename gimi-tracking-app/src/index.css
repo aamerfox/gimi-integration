@@ -92,6 +92,11 @@ body {
   letter-spacing: -0.01em;
 }
 
+:root[dir="rtl"] body {
+  font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: 0;
+}
+
 /* ── Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 5px;
@@ -596,6 +601,71 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   color: var(--accent);
 }
 
+.rtl-flip {
+  transition: transform 0.3s ease;
+}
+
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* ── Leaflet Control Dynamic Repositioning ─────────────────────── */
+/* Base Leaflet top offset to clear header space */
+.leaflet-top {
+  top: 16px !important;
+}
+
+/* Smooth transitions for left and right margins */
+.leaflet-left,
+.leaflet-right {
+  transition: left 0.3s ease, right 0.3s ease !important;
+}
+
+/* --- LTR specific rules --- */
+/* In LTR, object list toggle is on the left, info card is on the right. */
+[dir="ltr"] .map-wrapper.panel-open .leaflet-left {
+  left: 360px !important;
+  /* Clears object list which is width 320px + left 16px */
+}
+
+[dir="ltr"] .map-wrapper.panel-closed .leaflet-left {
+  left: 64px !important;
+  /* Clears just the floating toggle button */
+}
+
+[dir="ltr"] .map-wrapper .leaflet-right {
+  right: 320px !important;
+  /* Clears info card if it exists (right 16 + width 280) */
+}
+
+/* --- RTL specific rules --- */
+/* In RTL, object list is on the right, info card is on the left. */
+/* We keep the map layer control strictly in the left corner (left:16px) */
+[dir="rtl"] .map-wrapper.card-open .leaflet-left,
+[dir="rtl"] .map-wrapper.card-closed .leaflet-left {
+  left: 16px !important;
+}
+
+[dir="rtl"] .map-wrapper.panel-open .leaflet-right {
+  right: 360px !important;
+  /* Object list is on the right */
+}
+
+[dir="rtl"] .map-wrapper.panel-closed .leaflet-right {
+  right: 64px !important;
+  /* Just object list toggle button exists */
+}
+
+.info-card-wrapper {
+  inset-inline-end: 16px;
+  transition: inset-inline-end 0.3s ease;
+}
+
+[dir="rtl"] .info-card-wrapper {
+  /* Push the info card 64px from the left edge so the map layers control has space to sit in the exact corner */
+  inset-inline-end: 64px;
+}
+
 .text-muted {
   color: var(--text-muted);
 }
@@ -663,12 +733,20 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   }
 }
 
-.animate-slide-left {
+.animate-slide-start {
   animation: slideInLeft 0.3s ease-out;
 }
 
-.animate-slide-right {
+[dir="rtl"] .animate-slide-start {
   animation: slideInRight 0.3s ease-out;
+}
+
+.animate-slide-end {
+  animation: slideInRight 0.3s ease-out;
+}
+
+[dir="rtl"] .animate-slide-end {
+  animation: slideInLeft 0.3s ease-out;
 }
 
 .animate-fade-in {

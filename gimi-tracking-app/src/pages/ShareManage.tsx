@@ -5,6 +5,7 @@ import { useShareLinkStore } from '../store/shareLinks';
 import { createShareUrl, SHARE_DURATIONS } from '../services/share';
 import type { Device } from '../store/devices';
 import { Copy, Trash2, Link as LinkIcon, Lock, CheckCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function ShareManage() {
     const { accessToken } = useAuthStore();
@@ -15,6 +16,7 @@ export default function ShareManage() {
     const [selectedDuration, setSelectedDuration] = useState(0);
     const [generating, setGenerating] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const { t } = useTranslation();
 
     const fallbackCopyTextToClipboard = (text: string) => {
         const textArea = document.createElement("textarea");
@@ -112,17 +114,17 @@ export default function ShareManage() {
                         <LinkIcon size={24} color="var(--accent)" />
                     </div>
                     <div>
-                        <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Share Link</h1>
-                        <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0', fontSize: '14px' }}>Anyone with the link can view live location — no login required.</p>
+                        <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>{t('share.title')}</h1>
+                        <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0', fontSize: '14px' }}>{t('share.subtitle')}</p>
                     </div>
                 </div>
 
                 <div className="glass-panel" style={{ padding: '24px', marginBottom: '32px' }}>
-                    <h2 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>Create Share Link</h2>
+                    <h2 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>{t('share.createLink')}</h2>
 
                     <div style={{ marginBottom: '20px' }}>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.05em' }}>
-                            DEVICE
+                            {t('share.device')}
                         </label>
                         <select
                             value={selectedImei}
@@ -146,7 +148,7 @@ export default function ShareManage() {
 
                     <div style={{ marginBottom: '24px' }}>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.05em' }}>
-                            LINK EXPIRES IN
+                            {t('share.expiresIn')}
                         </label>
                         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                             {SHARE_DURATIONS.map((d, i) => (
@@ -181,7 +183,7 @@ export default function ShareManage() {
                             backgroundColor: copiedId === 'generated' ? 'var(--success)' : 'var(--accent)',
                         }}
                     >
-                        {generating ? 'Generating...' : copiedId === 'generated' ? 'Copied to Clipboard!' : '✨ Generate Share Link'}
+                        {generating ? t('common.loading') : copiedId === 'generated' ? t('share.copied') : `✨ ${t('share.generate')}`}
                     </button>
 
                     <div style={{
@@ -202,13 +204,13 @@ export default function ShareManage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Active Links ({activeLinks.length})</h2>
+                    <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('share.activeLinks')} ({activeLinks.length})</h2>
                     {expiredLinks.length > 0 && (
                         <button
                             onClick={clearExpired}
                             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' }}
                         >
-                            Clear expired ({expiredLinks.length})
+                            {t('share.clearExpired')} ({expiredLinks.length})
                         </button>
                     )}
                 </div>
@@ -216,7 +218,7 @@ export default function ShareManage() {
                 {links.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                         <LinkIcon size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
-                        <p>No share links yet.<br />Generate one above to share a device's live location.</p>
+                        <p>{t('share.noLinks')}</p>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -249,7 +251,7 @@ export default function ShareManage() {
                                                 marginTop: '4px',
                                                 color: expired ? 'var(--danger)' : 'var(--success)'
                                             }}>
-                                                {expired ? 'Expired' : `Expires ${new Date(link.exp * 1000).toLocaleString()}`}
+                                                {expired ? t('share.expired') : `${t('share.expires')} ${new Date(link.exp * 1000).toLocaleString()}`}
                                             </div>
                                             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                                                 Created {new Date(link.createdAt).toLocaleDateString()}

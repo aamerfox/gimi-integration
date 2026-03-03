@@ -3,6 +3,7 @@ import { useDeviceStore } from '../store/devices';
 import { useGroupStore } from '../store/groups';
 import type { Device } from '../store/devices';
 import { ChevronRight, ChevronDown, MoreVertical, Plus, Trash2, Edit2, FolderInput } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface DevicePanelProps {
     onDeviceSelect?: () => void;
@@ -12,6 +13,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
     const { devices, selectedDevice, selectDevice } = useDeviceStore();
     const { groups, deviceGroupMap, addGroup, removeGroup, assignDeviceToGroup, renameGroup } = useGroupStore();
     const [search, setSearch] = useState('');
+    const { t } = useTranslation();
 
     // Group UI states
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ default: true });
@@ -110,7 +112,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="sx-input"
-                            placeholder="Please enter the device name or IMEI"
+                            placeholder={t('common.search')}
                             style={{
                                 fontSize: '13px',
                                 padding: '8px 12px',
@@ -148,7 +150,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                             fontWeight: 500,
                         }}
                     >
-                        <Plus size={16} /> Add group
+                        <Plus size={16} /> {t('common.add')} Group
                     </button>
                 </div>
 

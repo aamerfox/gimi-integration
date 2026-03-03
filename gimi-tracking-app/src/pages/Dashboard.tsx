@@ -4,6 +4,7 @@ import type { Device } from '../store/devices';
 import LiveMap, { type LiveMapHandle } from '../components/LiveMap';
 import DevicePanel from '../components/DevicePanel';
 import MapZoomControls from '../components/MapZoomControls';
+import { useTranslation } from 'react-i18next';
 
 function useIsMobile() {
     const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
@@ -24,6 +25,7 @@ export default function Dashboard() {
     const [showMobilePanel, setShowMobilePanel] = useState(false);
     const mapRef = useRef<LiveMapHandle>(null);
     const isMobile = useIsMobile();
+    const { t } = useTranslation();
 
     // Update "last updated" timestamp whenever devices change
     useEffect(() => {
@@ -39,7 +41,7 @@ export default function Dashboard() {
     return (
         <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
             {/* Map - full screen */}
-            <div style={{ flex: 1, position: 'relative' }}>
+            <div className={`map-wrapper ${showPanel ? 'panel-open' : 'panel-closed'} ${!isMobile && selectedDevice && selectedDevice.lat ? 'card-open' : 'card-closed'}`} style={{ flex: 1, position: 'relative' }}>
                 <LiveMap ref={mapRef} />
 
                 {/* ── DESKTOP: Toggle panel button ─────────────────────── */}
@@ -50,17 +52,17 @@ export default function Dashboard() {
                         style={{
                             position: 'absolute',
                             top: 16,
-                            left: showPanel ? 340 : 16,
+                            insetInlineStart: showPanel ? 340 : 16,
                             zIndex: 1000,
                             width: 36,
                             height: 36,
                             background: 'var(--bg-secondary)',
                             border: '1px solid var(--border)',
                             borderRadius: 'var(--radius-md)',
-                            transition: 'left 0.3s ease',
+                            transition: 'inset-inline-start 0.3s ease',
                         }}
                     >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg className="rtl-flip" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             {showPanel ? (
                                 <><polyline points="15 18 9 12 15 6" /></>
                             ) : (
@@ -73,10 +75,10 @@ export default function Dashboard() {
                 {/* ── DESKTOP: Floating device panel ───────────────────── */}
                 {!isMobile && showPanel && (
                     <div
-                        className="animate-slide-left"
+                        className="animate-slide-start"
                         style={{
                             position: 'absolute',
-                            top: 16, left: 16, bottom: 52,
+                            top: 16, insetInlineStart: 16, bottom: 52,
                             width: 320, zIndex: 999,
                         }}
                     >
@@ -90,7 +92,7 @@ export default function Dashboard() {
                         onClick={() => setShowMobilePanel(true)}
                         style={{
                             position: 'absolute',
-                            top: 12, left: 12,
+                            top: 12, insetInlineStart: 12,
                             zIndex: 1000,
                             display: 'flex', alignItems: 'center', gap: '6px',
                             padding: '8px 14px',
@@ -106,7 +108,7 @@ export default function Dashboard() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <circle cx="12" cy="10" r="3" /><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7 11.5 7.3 11.8a1 1 0 0 0 1.4 0C13 21.5 20 15.4 20 10a8 8 0 0 0-8-8z" />
                         </svg>
-                        Devices
+                        {t('nav.devices')}
                         <span style={{
                             background: 'var(--accent)', color: '#0a0e1a',
                             borderRadius: '999px', padding: '1px 7px',
@@ -118,9 +120,10 @@ export default function Dashboard() {
                 {/* ── DESKTOP: Device detail card (top-right) ──────────── */}
                 {!isMobile && selectedDevice && selectedDevice.lat && (
                     <div
+                        className="info-card-wrapper"
                         style={{
                             position: 'absolute',
-                            top: 16, right: 16,
+                            top: 16,
                             zIndex: 999,
                             display: 'flex',
                             flexDirection: 'column',
@@ -128,7 +131,7 @@ export default function Dashboard() {
                         }}
                     >
                         <div
-                            className="glass-panel animate-slide-right"
+                            className="glass-panel animate-slide-end"
                             style={{ width: 280, padding: '20px' }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
@@ -163,7 +166,7 @@ export default function Dashboard() {
                 {!isMobile && (
                     <MapZoomControls
                         mapRef={mapRef as React.RefObject<any>}
-                        style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }}
+                        style={{ position: 'absolute', bottom: 24, insetInlineEnd: 16, zIndex: 998 }}
                     />
                 )}
 
@@ -259,17 +262,17 @@ export default function Dashboard() {
                 color: 'var(--text-muted)',
                 flexShrink: 0,
             }}>
-                <span>{devices.length} device{devices.length !== 1 ? 's' : ''}</span>
+                <span>{devices.length} {t('nav.devices')}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span className="status-dot status-dot--online" style={{ width: 6, height: 6 }} />
-                    {onlineCount} online
+                    {onlineCount} {t('dashboard.activeDevices')}
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span className="status-dot status-dot--offline" style={{ width: 6, height: 6 }} />
-                    {offlineCount} offline
+                    {offlineCount} {t('dashboard.offlineDevices')}
                 </span>
-                <span style={{ marginLeft: 'auto' }}>
-                    {loading ? 'Loading...' : `Updated ${lastUpdate}`}
+                <span style={{ marginInlineStart: 'auto' }} dir="ltr">
+                    {loading ? t('common.loading') : `Updated ${lastUpdate}`}
                 </span>
             </div>
         </div >

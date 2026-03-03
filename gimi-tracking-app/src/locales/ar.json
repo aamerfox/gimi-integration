@@ -1,0 +1,98 @@
+{
+    "common": {
+        "loading": "جاري التحميل...",
+        "error": "حدث خطأ",
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "delete": "حذف",
+        "edit": "تعديل",
+        "add": "إضافة",
+        "search": "بحث...",
+        "refresh": "تحديث",
+        "noData": "لا توجد بيانات",
+        "selectDevice": "اختر جهازاً",
+        "connecting": "جاري الاتصال..."
+    },
+    "nav": {
+        "dashboard": "لوحة القيادة",
+        "map": "الخريطة المباشرة",
+        "devices": "الأجهزة",
+        "reports": "التقارير",
+        "settings": "الإعدادات",
+        "profile": "الملف الشخصي",
+        "alerts": "التنبيهات",
+        "geofences": "السياج الجغرافي",
+        "history": "المسار السابق",
+        "share": "مشاركة الموقع"
+    },
+    "alertsFilters": {
+        "all": "الكل",
+        "geofence": "السياج الجغرافي",
+        "battery": "البطارية"
+    },
+    "alertDesc": {
+        "enterGeofence": "دخول سياج جغرافي",
+        "exitGeofence": "خروج سياج جغرافي"
+    },
+    "dashboard": {
+        "title": "لوحة القيادة",
+        "welcome": "مرحباً بعودتك",
+        "totalDevices": "إجمالي الأجهزة",
+        "activeDevices": "تنشط",
+        "offlineDevices": "غير متصل",
+        "alerts": "التنبيهات الأخيرة",
+        "viewAll": "عرض الكل"
+    },
+    "map": {
+        "title": "التتبع المباشر",
+        "selectDevice": "حدد جهازًا لعرض التفاصيل",
+        "noDevicesLocation": "لم يتم العثور على أجهزة ببيانات موقع"
+    },
+    "devices": {
+        "title": "إدارة الأجهزة",
+        "addDevice": "إضافة جهاز",
+        "deviceName": "اسم الجهاز",
+        "imei": "الرقم التسلسلي (IMEI)",
+        "status": "الحالة",
+        "lastUpdate": "آخر تحديث",
+        "actions": "الإجراءات"
+    },
+    "settings": {
+        "title": "الإعدادات",
+        "language": "اللغة",
+        "theme": "المظهر",
+        "notifications": "الإشعارات",
+        "saveChanges": "حفظ التغييرات"
+    },
+    "auth": {
+        "login": "تسجيل الدخول",
+        "email": "البريد الإلكتروني",
+        "password": "كلمة المرور",
+        "forgotPassword": "هل نسيت كلمة المرور؟",
+        "dontHaveAccount": "ليس لديك حساب؟",
+        "signUp": "إنشاء حساب",
+        "subtitle": "منصة تتبع الأسطول",
+        "accountId": "رقم الحساب",
+        "accountIdPlaceholder": "أدخل رقم الحساب",
+        "passwordPlaceholder": "أدخل كلمة المرور",
+        "signIn": "تسجيل الدخول",
+        "signingIn": "جاري الدخول...",
+        "loginFailed": "فشل تسجيل الدخول"
+    },
+    "share": {
+        "title": "مشاركة الموقع",
+        "subtitle": "يمكن لأي شخص لديه الرابط عرض الموقع المباشر — لا حاجة لتسجيل الدخول.",
+        "createLink": "إنشاء رابط مشاركة",
+        "device": "الجهاز",
+        "expiresIn": "ينتهي الرابط في",
+        "generate": "إنشاء رابط مشاركة",
+        "copied": "تم النسخ إلى الحافظة!",
+        "activeLinks": "الروابط النشطة",
+        "clearExpired": "مسح المنتهية",
+        "noLinks": "لا توجد روابط مشاركة بعد.\nقم بإنشاء واحد بالأعلى لمشاركة الموقع المباشر للجهاز.",
+        "expires": "ينتهي في",
+        "expired": "منتهي الصلاحية",
+        "invalidLink": "هذا الرابط غير صالح أو منتهي الصلاحية.",
+        "linkInactive": "رابط غير نشط"
+    }
+}

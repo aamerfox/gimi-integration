@@ -54,9 +54,14 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Lock } from 'lucide-react';
 import MapZoomControls from '../components/MapZoomControls';
+import { useTranslation } from 'react-i18next';
 
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+const GOOGLE_STREET_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
+const GOOGLE_SATELLITE_URL = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+const GOOGLE_SATELLITE_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
+const GOOGLE_HYBRID_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+const GOOGLE_HYBRID_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
 
 function createMarkerIcon() {
     return L.divIcon({
@@ -90,6 +95,7 @@ export default function ViewShare() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [deviceName, setDeviceName] = useState<string>('');
+    const { t } = useTranslation();
 
     // Fetch live location via `gimi.device.location.get` or by tricking the other list API
     useEffect(() => {
@@ -98,24 +104,36 @@ export default function ViewShare() {
 
         if (!params) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            setError('This link is invalid or has expired.');
+            setError(t('share.invalidLink'));
             setLoading(false);
             return;
         }
 
         setDeviceName(params.name);
 
+        const streetLayer = L.tileLayer(GOOGLE_STREET_URL, { attribution: GOOGLE_STREET_ATTR, maxZoom: 18 });
+        const satelliteLayer = L.tileLayer(GOOGLE_SATELLITE_URL, { attribution: GOOGLE_SATELLITE_ATTR, maxZoom: 18 });
+        const hybridLayer = L.tileLayer(GOOGLE_HYBRID_URL, { attribution: GOOGLE_HYBRID_ATTR, maxZoom: 18 });
+
+        const baseMaps = {
+            "Google Streets": streetLayer,
+            "Google Satellite": satelliteLayer,
+            "Google Hybrid": hybridLayer
+        };
+
         const map = L.map(containerRef.current!, {
             center: [24.7136, 46.6753], // Default Riyadh
             zoom: 12,
             zoomControl: false,
+            layers: [streetLayer] // Default to street
         });
-        L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 18 }).addTo(map);
+
+        L.control.layers(baseMaps).addTo(map);
         mapRef.current = map;
 
         const icon = createMarkerIcon();
         const marker = L.marker([24.7136, 46.6753], { icon }).addTo(map);
-        marker.bindPopup(`<b>${params.name}</b><br>Loading live location...`).openPopup();
+        marker.bindPopup(`<b>${params.name}</b><br>${t('common.loading')}`).openPopup();
         markerRef.current = marker;
 
         // Start polling
@@ -135,12 +153,18 @@ export default function ViewShare() {
                 let updated = false;
 
                 if (data && data.code === 0 && Array.isArray(data.result) && data.result.length > 0) {
-                    lat = parseFloat(data.result[0].lat);
-                    lng = parseFloat(data.result[0].lng);
-                    speed = parseFloat(data.result[0].speed || '0');
-                    updated = true;
-                } else {
-                    // Fallback to getTrackHistory last 10 minutes
+                    const pLat = parseFloat(data.result[0].lat);
+                    const pLng = parseFloat(data.result[0].lng);
+                    if (pLat !== 0 || pLng !== 0) {
+                        lat = pLat;
+                        lng = pLng;
+                        speed = parseFloat(data.result[0].speed || '0');
+                        updated = true;
+                    }
+                }
+
+                // Fallback to getTrackHistory last 10 minutes if live location has no GPS fix (0,0) or fails
+                if (!updated) {
                     const now = new Date();
                     const end = now.toISOString().replace('T', ' ').substring(0, 19);
                     const tenMinsAgo = new Date(now.getTime() - 10 * 60000);
@@ -155,10 +179,14 @@ export default function ViewShare() {
                     });
                     if (trackData && trackData.code === 0 && Array.isArray(trackData.result) && trackData.result.length > 0) {
                         const lastPoint = trackData.result[trackData.result.length - 1];
-                        lat = parseFloat(lastPoint.lat);
-                        lng = parseFloat(lastPoint.lng);
-                        speed = parseFloat(lastPoint.speed || '0');
-                        updated = true;
+                        const pLat = parseFloat(lastPoint.lat);
+                        const pLng = parseFloat(lastPoint.lng);
+                        if (pLat !== 0 || pLng !== 0) {
+                            lat = pLat;
+                            lng = pLng;
+                            speed = parseFloat(lastPoint.speed || '0');
+                            updated = true;
+                        }
                     }
                 }
 
@@ -203,7 +231,7 @@ export default function ViewShare() {
                     <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
                         <Lock size={32} color="var(--danger)" />
                     </div>
-                    <h1 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 12px 0' }}>Link Inactive</h1>
+                    <h1 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 12px 0' }}>{t('share.linkInactive')}</h1>
                     <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
                         {error}
                     </p>
@@ -235,12 +263,12 @@ export default function ViewShare() {
                 </div>
                 <div>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>SaudiEx Live Share</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{deviceName || 'Loading device...'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{deviceName || t('common.loading')}</div>
                 </div>
 
                 {loading && (
-                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontSize: '12px', fontWeight: 600 }}>
-                        <div className="animate-pulse">Connecting...</div>
+                    <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontSize: '12px', fontWeight: 600 }}>
+                        <div className="animate-pulse">{t('common.connecting') || 'Connecting...'}</div>
                     </div>
                 )}
             </div>

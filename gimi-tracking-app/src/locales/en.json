@@ -1,0 +1,98 @@
+{
+    "common": {
+        "loading": "Loading...",
+        "error": "An error occurred",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "search": "Search...",
+        "refresh": "Refresh",
+        "noData": "No data available",
+        "selectDevice": "Select a device",
+        "connecting": "Connecting..."
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "map": "Live Map",
+        "devices": "Devices",
+        "reports": "Reports",
+        "settings": "Settings",
+        "profile": "Profile",
+        "alerts": "Alerts",
+        "geofences": "Geofences",
+        "history": "History",
+        "share": "Share Link"
+    },
+    "alertsFilters": {
+        "all": "All",
+        "geofence": "Geofence",
+        "battery": "Battery"
+    },
+    "alertDesc": {
+        "enterGeofence": "Enter geo-fence",
+        "exitGeofence": "Exit geo-fence"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "welcome": "Welcome back",
+        "totalDevices": "Total Devices",
+        "activeDevices": "Active",
+        "offlineDevices": "Offline",
+        "alerts": "Recent Alerts",
+        "viewAll": "View All"
+    },
+    "map": {
+        "title": "Live Tracking",
+        "selectDevice": "Select a device to view details",
+        "noDevicesLocation": "No devices with location data found"
+    },
+    "devices": {
+        "title": "Device Management",
+        "addDevice": "Add Device",
+        "deviceName": "Device Name",
+        "imei": "IMEI",
+        "status": "Status",
+        "lastUpdate": "Last Update",
+        "actions": "Actions"
+    },
+    "settings": {
+        "title": "Settings",
+        "language": "Language",
+        "theme": "Theme",
+        "notifications": "Notifications",
+        "saveChanges": "Save Changes"
+    },
+    "auth": {
+        "login": "Login",
+        "email": "Email Address",
+        "password": "Password",
+        "forgotPassword": "Forgot Password?",
+        "dontHaveAccount": "Don't have an account?",
+        "signUp": "Sign Up",
+        "subtitle": "Fleet Tracking Platform",
+        "accountId": "Account ID",
+        "accountIdPlaceholder": "Enter your account ID",
+        "passwordPlaceholder": "Enter your password",
+        "signIn": "Sign In",
+        "signingIn": "Signing in...",
+        "loginFailed": "Login failed"
+    },
+    "share": {
+        "title": "Share Link",
+        "subtitle": "Anyone with the link can view live location \u2014 no login required.",
+        "createLink": "Create Share Link",
+        "device": "DEVICE",
+        "expiresIn": "LINK EXPIRES IN",
+        "generate": "Generate Share Link",
+        "copied": "Copied to Clipboard!",
+        "activeLinks": "Active Links",
+        "clearExpired": "Clear expired",
+        "noLinks": "No share links yet.\nGenerate one above to share a device's live location.",
+        "expires": "Expires",
+        "expired": "Expired",
+        "invalidLink": "This link is invalid or has expired.",
+        "linkInactive": "Link Inactive"
+    }
+}
