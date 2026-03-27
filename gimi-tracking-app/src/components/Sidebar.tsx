@@ -162,7 +162,7 @@ export default function Sidebar() {
                                         <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                                     </svg>
                                 )}
-                                {isLight ? 'Dark Mode' : 'Light Mode'}
+                                {t('settings.theme')}
                             </button>
 
                             <button
@@ -178,7 +178,7 @@ export default function Sidebar() {
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                                 </svg>
-                                {t('auth.login')}
+                                {t('auth.logout')}
                             </button>
                             <div style={{ padding: '0 12px' }}>
                                 <LanguageSwitcher />
@@ -345,7 +345,7 @@ export default function Sidebar() {
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
                     <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 0.2s ease' }}>
-                        {t('auth.login')}
+                        {t('auth.logout')}
                     </span>
                 </button>
                 {expanded && (

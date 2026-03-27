@@ -56,7 +56,7 @@ function createMarkerIcon(isOnline: boolean, isSelected: boolean) {
     });
 }
 
-const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
+const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_unusedProps, ref) {
     const mapRef = useRef<L.Map | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -159,7 +159,7 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
         const map = mapRef.current;
         if (!map || !selectedDevice) return;
         const d = selectedDevice as Device;
-        if (d.lat && d.lng) {
+        if (d.lat !== undefined && d.lng !== undefined) {
             map.flyTo([d.lat, d.lng], 15, { duration: 1 });
         }
     }, [selectedDevice]);

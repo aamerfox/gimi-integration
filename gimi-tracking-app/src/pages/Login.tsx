@@ -6,6 +6,7 @@ import { gimiService } from '../services/gimi';
 import { useAuthStore } from '../store/auth';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { mapApiErrorToKey } from '../lib/errorUtils';
 
 interface LoginResult {
     accessToken: string;
@@ -49,7 +50,9 @@ export default function Login() {
                 navigate('/');
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : t('auth.loginFailed'));
+            const errorMsg = err instanceof Error ? err.message : t('auth.loginFailed');
+            const translationKey = mapApiErrorToKey(errorMsg);
+            setError(translationKey ? t(translationKey) : errorMsg);
         } finally {
             setLoading(false);
         }

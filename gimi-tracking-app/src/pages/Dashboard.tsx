@@ -31,7 +31,9 @@ export default function Dashboard() {
     useEffect(() => {
         if (devices.length > 0) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            setLastUpdate(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+            const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+            const locale = document.documentElement.dir === 'rtl' ? 'ar-SA' : 'en-US';
+            setLastUpdate(new Date().toLocaleTimeString(locale, timeOptions));
         }
     }, [devices]);
 
@@ -272,7 +274,7 @@ export default function Dashboard() {
                     {offlineCount} {t('dashboard.offlineDevices')}
                 </span>
                 <span style={{ marginInlineStart: 'auto' }} dir="ltr">
-                    {loading ? t('common.loading') : `Updated ${lastUpdate}`}
+                    {loading ? t('common.loading') : t('dashboard.updated').replace('{{time}}', lastUpdate)}
                 </span>
             </div>
         </div >

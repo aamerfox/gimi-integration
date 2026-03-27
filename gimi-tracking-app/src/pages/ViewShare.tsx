@@ -274,7 +274,7 @@ export default function ViewShare() {
             </div>
 
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
+            <MapZoomControls mapRef={mapRef as React.RefObject<L.Map>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
         </div>
     );
 }

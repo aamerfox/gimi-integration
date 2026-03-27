@@ -77,7 +77,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
     };
 
     const handleDeleteGroup = (id: string) => {
-        if (window.confirm('Are you sure you want to delete this group? Devices will be moved to Default group.')) {
+        if (window.confirm(t('devices.deleteGroupConfirm', 'Are you sure you want to delete this group? Devices will be moved to Default group.'))) {
             removeGroup(id);
         }
         setGroupMenuOpenFor(null);
@@ -104,7 +104,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                 {/* Search */}
                 <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-                        saudiex(Stock{devices.length}/Total{devices.length})
+                        saudiex ({t('devices.stock')}: {devices.length} / {t('devices.total')}: {devices.length})
                     </div>
                     <div style={{ position: 'relative' }}>
                         <input
@@ -133,30 +133,18 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                 </div>
 
                 {/* Add Group Button */}
-                <div style={{ marginBottom: '16px' }}>
+                <div style={{ marginBottom: '16px', padding: '0 4px' }}>
                     <button
                         onClick={handleAddGroup}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            color: 'var(--accent)',
-                            border: '1px solid var(--accent)',
-                            background: 'transparent',
-                            padding: '6px 16px',
-                            borderRadius: '4px',
-                            fontSize: '13px',
-                            cursor: 'pointer',
-                            fontWeight: 500,
-                        }}
+                        className="sx-btn sx-btn-sm sx-btn-outline"
                     >
-                        <Plus size={16} /> {t('common.add')} Group
+                        <Plus size={16} /> {t('devices.addGroup')}
                     </button>
                 </div>
 
                 {/* Status Bar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px' }}>All {devices.length}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px' }}>{t('alertsFilters.all')} {devices.length}</span>
                     <div style={{ display: 'flex', gap: '12px', fontSize: '13px', fontWeight: 500 }}>
                         <span style={{ color: 'var(--online)', display: 'flex', alignItems: 'center', gap: '4px' }}>▲ {onlineCount}</span>
                         <span style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '4px' }}>♥ {devices.length - onlineCount}</span>
@@ -201,7 +189,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                 {/* Render Default Group */}
                 <GroupSection
                     id="default"
-                    name="Default group"
+                    name={t('devices.defaultGroup', 'Default group')}
                     devices={groupedDevices.default}
                     isExpanded={expandedGroups.default ?? true}
                     onToggle={(e) => toggleGroup('default', e)}
@@ -252,6 +240,7 @@ function GroupSection({
     id, name, devices, isExpanded, onToggle, groups, selectedDevice, selectDevice, onDeviceSelect, assignDeviceToGroup, menuOpenFor, setMenuOpenFor, groupMenuOpenFor, setGroupMenuOpenFor, handleRenameGroup, handleDeleteGroup, menuRef
 }: GroupSectionProps) {
     const isDefault = id === 'default';
+    const { t } = useTranslation();
 
     return (
         <div style={{ marginBottom: '12px' }}>
@@ -344,7 +333,7 @@ function GroupSection({
                     ))}
                     {devices.length === 0 && (
                         <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                            Empty group
+                            {t('devices.emptyGroup')}
                         </div>
                     )}
                 </div>
@@ -377,31 +366,13 @@ function GroupSection({
 function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, groups, currentGroupId, onAssign, menuRef }: any) {
     const isOnline = device.status === '1' || device.posType === 'GPS';
     const batteryVal = parseFloat(String(device.batteryPowerVal || device.battery || '0'));
+    const { t } = useTranslation();
 
     return (
         <div style={{ position: 'relative' }}>
             <button
                 onClick={onSelect}
-                style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: isSelected ? '1px solid var(--border-accent)' : '1px solid transparent',
-                    background: isSelected ? 'var(--accent-dim)' : 'transparent',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    color: 'inherit',
-                    transition: 'all 0.15s ease',
-                    marginBottom: '4px',
-                }}
-                onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = 'var(--bg-primary)';
-                }}
-                onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = 'transparent';
-                }}
+                className={`device-item-btn ${isSelected ? 'selected' : ''}`}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {/* Vehicle Icon */}
@@ -457,11 +428,11 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}>
                     <div style={{ fontSize: '11px', padding: '6px 8px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
-                        Move to group...
+                        {t('devices.moveToGroup')}
                     </div>
                     {currentGroupId !== 'default' && (
                         <div className="group-menu-item" onClick={(e) => { e.stopPropagation(); onAssign(null); }}>
-                            <FolderInput size={14} /> Default group
+                            <FolderInput size={14} /> {t('devices.defaultGroup', 'Default group')}
                         </div>
                     )}
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -474,7 +445,7 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
                     ))}
                     {groups.length === 0 && currentGroupId === 'default' && (
                         <div style={{ padding: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                            No other groups exist.
+                            {t('devices.noOtherGroups', 'No other groups exist.')}
                         </div>
                     )}
                 </div>

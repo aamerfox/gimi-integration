@@ -7,6 +7,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapZoomControls from '../components/MapZoomControls';
 import { useTranslation } from 'react-i18next';
+import { mapApiErrorToKey } from '../lib/errorUtils';
 
 const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
 const GOOGLE_STREET_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
@@ -101,24 +102,77 @@ export default function History() {
         setPlaying(false);
 
         try {
-            const sTime = startTime.replace('T', ' ') + ':00';
-            const eTime = endTime.replace('T', ' ') + ':00';
-            const res = await gimiService.getTrackHistory(accessToken, selectedImei, sTime, eTime) as unknown as { result: TrackPoint[] | null };
-            if (res?.result && Array.isArray(res.result)) {
-                const points: TrackPoint[] = res.result.map((p) => ({
+            const startObj = new Date(startTime);
+            const endObj = new Date(endTime);
+            
+            const diffMs = endObj.getTime() - startObj.getTime();
+            const maxDays = 7;
+            if (diffMs > maxDays * 24 * 60 * 60 * 1000) {
+                throw new Error(t('history.maxDaysExceeded'));
+            }
+            if (diffMs <= 0) {
+                throw new Error('Invalid date range. Return time must be after start time.');
+            }
+
+            // TrackSolid API strictly limits history to 2 days per single request.
+            // We chunk the total requested window into max 48-hour periods.
+            const CHUNK_SIZE_MS = 48 * 60 * 60 * 1000 - 1000;
+            const chunks: { s: string, e: string }[] = [];
+            let current = new Date(startObj);
+            
+            while (current < endObj) {
+                let next = new Date(current.getTime() + CHUNK_SIZE_MS);
+                if (next > endObj) next = endObj;
+                
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                const formatForApi = (d: Date) => {
+                    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                };
+
+                chunks.push({
+                    s: formatForApi(current),
+                    e: formatForApi(next)
+                });
+                
+                current = new Date(next.getTime() + 1000); 
+            }
+
+            let allPoints: TrackPoint[] = [];
+
+            // Fetch chunks sequentially to avoid parallel rate limits
+            for (const chunk of chunks) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const res = await gimiService.getTrackHistory(accessToken, selectedImei, chunk.s, chunk.e) as any as { result: TrackPoint[] | null };
+                if (res?.result && Array.isArray(res.result)) {
+                    allPoints = allPoints.concat(res.result);
+                }
+            }
+
+            if (allPoints.length > 0) {
+                const points: TrackPoint[] = allPoints.map((p) => ({
                     lat: p.lat,
                     lng: p.lng,
                     speed: p.speed || 0,
                     gpsTime: p.gpsTime || '',
                     direction: p.direction || 0,
                 }));
+                // Sort chronologically just to be safe
+                points.sort((a, b) => a.gpsTime.localeCompare(b.gpsTime));
                 setTrack(points);
                 drawTrack(points);
             } else {
-                setError('No track data found for this period');
+                setError('No track data found for this period.');
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to load track');
+            const errorMsg = err instanceof Error ? err.message : 'Failed to load track';
+            
+            // If it's already a translated string from our throw statement, don't map it again
+            if (errorMsg === t('history.maxDaysExceeded')) {
+                 setError(errorMsg);
+            } else {
+                 const translationKey = mapApiErrorToKey(errorMsg);
+                 setError(translationKey ? t(translationKey) : errorMsg);
+            }
         } finally {
             setLoading(false);
         }
@@ -209,7 +263,7 @@ export default function History() {
         <div style={{ position: 'relative', height: '100vh', display: 'flex', flexDirection: 'column' }}>
             {/* Map */}
             <div ref={containerRef} style={{ flex: 1, minHeight: 0, height: '100%' }} />
-            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: track.length > 0 ? '84px' : '24px', right: '16px' }} />
+            <MapZoomControls mapRef={mapRef as React.RefObject<L.Map>} style={{ position: 'absolute', bottom: track.length > 0 ? '84px' : '24px', right: '16px' }} />
 
             {/* Floating controls - top left */}
             <div
@@ -242,11 +296,11 @@ export default function History() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                     <div>
-                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>From</label>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>{t('history.from')}</label>
                         <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="sx-input" style={{ fontSize: '12px', padding: '6px 8px', marginTop: '4px', width: '100%', boxSizing: 'border-box' }} />
                     </div>
                     <div>
-                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>To</label>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>{t('history.to')}</label>
                         <input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="sx-input" style={{ fontSize: '12px', padding: '6px 8px', marginTop: '4px', width: '100%', boxSizing: 'border-box' }} />
                     </div>
                 </div>
@@ -257,7 +311,7 @@ export default function History() {
                     className="sx-btn sx-btn-primary sx-btn-sm"
                     style={{ width: '100%' }}
                 >
-                    {loading ? t('common.loading') : `Load Track`}
+                    {loading ? t('common.loading') : t('history.loadTrack')}
                 </button>
 
                 {error && (
@@ -268,7 +322,7 @@ export default function History() {
 
                 {track.length > 0 && (
                     <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                        {track.length} points loaded
+                        {track.length} {t('history.pointsLoaded')}
                     </div>
                 )}
             </div>

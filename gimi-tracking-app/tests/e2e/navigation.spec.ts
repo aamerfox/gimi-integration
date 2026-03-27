@@ -26,7 +26,7 @@ test.describe('Sidebar Navigation', () => {
         await mockAuth(page);
         await page.goto('/');
         // Wait for the app to fully load
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('load');
     });
 
     test('navigates to History page via sidebar', async ({ page }) => {
@@ -54,7 +54,7 @@ test.describe('Sidebar Navigation', () => {
     test('dashboard link navigates back to /', async ({ page }) => {
         // Go to history first
         await page.goto('/history');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('load');
 
         // The home/dashboard link is labelled 'Live Map' in the sidebar
         await page.locator('nav, .sidebar').first().hover();
@@ -71,7 +71,7 @@ test.describe('Page Content Checks', () => {
 
     test('History page renders without crashing', async ({ page }) => {
         await page.goto('/history');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('load');
         // Should NOT be on login page
         await expect(page).not.toHaveURL(/\/login/);
         // Page should have some content
@@ -80,14 +80,14 @@ test.describe('Page Content Checks', () => {
 
     test('Geofences page renders without crashing', async ({ page }) => {
         await page.goto('/geofences');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('load');
         await expect(page).not.toHaveURL(/\/login/);
         await expect(page.locator('body')).not.toBeEmpty();
     });
 
     test('Alerts page renders without crashing', async ({ page }) => {
         await page.goto('/alerts');
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('load');
         await expect(page).not.toHaveURL(/\/login/);
         await expect(page.locator('body')).not.toBeEmpty();
     });

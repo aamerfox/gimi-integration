@@ -208,7 +208,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   font-family: inherit;
   cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
 }
 
@@ -219,12 +219,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .sx-btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--accent-glow), 0 4px 12px rgba(0, 212, 170, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--accent-glow), 0 6px 16px rgba(0, 212, 170, 0.35);
 }
 
 .sx-btn-primary:active {
-  transform: translateY(0);
+  transform: scale(0.97);
 }
 
 .sx-btn-primary:disabled {
@@ -241,14 +241,19 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .sx-btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.sx-btn-ghost:active {
+  transform: scale(0.97);
 }
 
 .sx-btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 8px 16px;
+  font-size: 13px;
   border-radius: var(--radius-sm);
 }
 
@@ -261,8 +266,62 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .sx-btn-icon:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.sx-btn-icon:active {
+  transform: scale(0.92);
+}
+
+.sx-btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.sx-btn-outline:hover {
+  background: var(--accent-dim);
+  transform: translateY(-1px);
+}
+
+.sx-btn-outline:active {
+  transform: scale(0.97);
+}
+
+/* ── Device List Item ──────────────────────────────────────────── */
+.device-item-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 4px;
+}
+
+.device-item-btn:hover {
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.device-item-btn:active {
+  transform: scale(0.98);
+}
+
+.device-item-btn.selected {
+  border: 1px solid var(--border-accent);
+  background: var(--accent-dim);
+}
+
+.device-item-btn.selected:hover {
+  background: var(--accent-dim);
 }
 
 /* ── Status Badges ─────────────────────────────────────────────── */

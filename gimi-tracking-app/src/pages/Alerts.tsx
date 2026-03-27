@@ -9,6 +9,7 @@ import { useAlertRuleStore } from '../store/alertRules';
 import type { AlertRuleType } from '../store/alertRules';
 import { useGeofenceStore } from '../store/geofences';
 import { useTranslation } from 'react-i18next';
+import { mapApiErrorToKey } from '../lib/errorUtils';
 
 interface RawAlarm {
     alarmId?: string;
@@ -212,7 +213,9 @@ export default function Alerts() {
             parsed.sort((a, b) => b.gpsTime.localeCompare(a.gpsTime));
             setAlarms(parsed);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to load alerts');
+            const errorMsg = err instanceof Error ? err.message : 'Failed to load alerts';
+            const translationKey = mapApiErrorToKey(errorMsg);
+            setError(translationKey ? t(translationKey) : errorMsg);
             setAlarms([]);
         } finally {
             setIsLoading(false);
@@ -268,7 +271,7 @@ export default function Alerts() {
                     <div className="glass-panel" style={{ width: isMobile ? 'calc(100vw - 24px)' : 440, padding: '24px', borderRadius: 'var(--radius-lg)', maxHeight: '90vh', overflowY: 'auto' }}>
                         {/* Modal header */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Add Alert Rule</h3>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600 }}>{t('alerts.addRule')}</h3>
                             <button onClick={() => setShowAddRule(false)} className="sx-btn-icon" style={{ width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'transparent' }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                             </button>
@@ -276,7 +279,7 @@ export default function Alerts() {
 
                         {/* Alert type selector */}
                         <div style={{ marginBottom: '16px' }}>
-                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>Alert Type</label>
+                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>{t('alerts.alertType')}</label>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                 {(['geofence', 'overspeed', 'offline', 'lowBattery'] as AlertRuleType[]).map(t => (
                                     <button key={t} onClick={() => setRuleType(t)}
@@ -301,7 +304,7 @@ export default function Alerts() {
 
                         {/* Rule name */}
                         <div style={{ marginBottom: '14px' }}>
-                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Rule Name *</label>
+                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>{t('alerts.ruleName')}</label>
                             <input
                                 className="sx-input"
                                 value={ruleName}
@@ -313,9 +316,9 @@ export default function Alerts() {
 
                         {/* Device selector */}
                         <div style={{ marginBottom: '14px' }}>
-                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Device</label>
+                            <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>{t('alerts.device')}</label>
                             <select className="sx-select" value={ruleImei} onChange={e => setRuleImei(e.target.value)} style={{ width: '100%', padding: '8px 12px', fontSize: '13px' }}>
-                                <option value="">All Devices</option>
+                                <option value="">{t('alerts.allDevices')}</option>
                                 {devices.map((d: Device) => (
                                     <option key={d.imei} value={d.imei}>{d.deviceName} ({d.imei})</option>
                                 ))}
@@ -325,9 +328,9 @@ export default function Alerts() {
                         {/* Geofence picker */}
                         {ruleType === 'geofence' && (
                             <div style={{ marginBottom: '14px' }}>
-                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Geofence Zone</label>
+                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>{t('alerts.geofenceZone')}</label>
                                 <select className="sx-select" value={ruleFenceId} onChange={e => setRuleFenceId(e.target.value)} style={{ width: '100%', padding: '8px 12px', fontSize: '13px' }}>
-                                    <option value="">Any Geofence</option>
+                                    <option value="">{t('alerts.anyGeofence')}</option>
                                     {geofences.map(f => (
                                         <option key={f.id} value={f.id}>{f.fenceName}</option>
                                     ))}
@@ -338,7 +341,7 @@ export default function Alerts() {
                         {/* Speed limit */}
                         {ruleType === 'overspeed' && (
                             <div style={{ marginBottom: '14px' }}>
-                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Speed Limit (km/h)</label>
+                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>{t('alerts.speedLimit')}</label>
                                 <input
                                     type="number" min={10} max={300}
                                     className="sx-input"
@@ -353,7 +356,7 @@ export default function Alerts() {
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
                             <button onClick={() => setShowAddRule(false)} className="sx-btn sx-btn-ghost">Cancel</button>
                             <button onClick={handleAddRule} className="sx-btn sx-btn-primary" disabled={!ruleName.trim()}>
-                                Create Rule
+                                {t('alerts.createRule')}
                             </button>
                         </div>
                     </div>
@@ -364,20 +367,20 @@ export default function Alerts() {
             <div className="glass-panel-flat" style={{ marginBottom: '16px', overflow: 'hidden' }}>
                 <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        ⚙️ Alert Rules
+                        ⚙️ {t('alerts.rules')}
                         <span style={{ background: 'var(--border)', color: 'var(--text-muted)', borderRadius: '999px', padding: '1px 7px', fontSize: '10px', fontWeight: 600 }}>
                             {rules.length}
                         </span>
                     </span>
                     <button onClick={() => setShowAddRule(true)} className="sx-btn sx-btn-primary sx-btn-sm" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                        Add Alert
+                        {t('alerts.addAlert')}
                     </button>
                 </div>
 
                 {rules.length === 0 ? (
                     <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                        No alert rules yet — click <strong>Add Alert</strong> to create one
+                        {t('alerts.noRules')}
                     </div>
                 ) : (
                     rules.map(rule => (
@@ -434,7 +437,7 @@ export default function Alerts() {
                     }}>
                         <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '14px' }}>📡</span>
-                            Live Geofence Events
+                            {t('alerts.liveEvents')}
                             <span style={{
                                 background: 'var(--accent)',
                                 color: '#0a0e1a',
@@ -449,7 +452,7 @@ export default function Alerts() {
                             className="sx-btn sx-btn-ghost sx-btn-sm"
                             style={{ fontSize: '11px' }}
                         >
-                            Clear All
+                            {t('alerts.clearAll')}
                         </button>
                     </div>
 
@@ -509,7 +512,7 @@ export default function Alerts() {
                         className="sx-select"
                         style={{ width: '200px', padding: '6px 10px', fontSize: '12px' }}
                     >
-                        <option value="">All Devices</option>
+                        <option value="">{t('alerts.allDevices')}</option>
                         {devices.map((d: Device) => (
                             <option key={d.imei} value={d.imei}>{d.deviceName}</option>
                         ))}
@@ -535,7 +538,7 @@ export default function Alerts() {
                     </div>
 
                     <button onClick={fetchAlarms} className="sx-btn sx-btn-primary sx-btn-sm">
-                        Search
+                        {t('common.searchBtn')}
                     </button>
                 </div>
             </div>

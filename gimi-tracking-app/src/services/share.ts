@@ -65,8 +65,8 @@ export function validateShareUrl(search: string): ShareParams | null {
 
 /** Duration presets in seconds */
 export const SHARE_DURATIONS = [
-    { label: '1 hour', seconds: 3600 },
-    { label: '4 hours', seconds: 4 * 3600 },
-    { label: '24 hours', seconds: 24 * 3600 },
-    { label: '7 days', seconds: 7 * 24 * 3600 },
+    { label: '1 hour', labelKey: 'share.duration.1h', seconds: 3600 },
+    { label: '4 hours', labelKey: 'share.duration.4h', seconds: 4 * 3600 },
+    { label: '24 hours', labelKey: 'share.duration.24h', seconds: 24 * 3600 },
+    { label: '7 days', labelKey: 'share.duration.7d', seconds: 7 * 24 * 3600 },
 ] as const;
