@@ -1,7 +1,14 @@
 # SaudiEx Tracking App - Handover Documentation
 
 ## 1. Project Overview
-The SaudiEx Tracking App is a Vite-based React application providing real-time GPS tracking, historical data playback, geofencing, and alert management. It integrates with the Gimi/TrackSolid Pro IoT API.
+The SaudiEx Tracking App is a Vite-based React application providing real-time GPS tracking, historical data playback, geofencing, and alert management. It integrates seamlessly with the **TrackSolid Pro IoT API** to fetch live telemetry and device data.
+
+## 2. API Integration (TrackSolid Pro)
+The application communicates with the TrackSolid Pro platform using a secure, signed request mechanism:
+- **Authentication**: Uses MD5-based HMAC signatures for all API calls (`app_key`, `timestamp`, `sign`).
+- **Data Source**: Fetches real-time location, historical tracks, and alert notifications.
+- **Proxy Layer**: Production traffic is proxied through a Cloud Run endpoint to manage CORS and ensure secure token rotation.
+- **Endpoints**: Integrated with core Jimi/TrackSolid methods such as `jimi.device.location.get`, `jimi.device.track.list`, and `jimi.device.alarm.list`.
 
 ## 2. Key Features
 - **Live Tracking**: Real-time position monitoring with auto-refresh.

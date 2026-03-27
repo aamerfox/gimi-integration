@@ -1,6 +1,6 @@
 # SaudiEx Tracking App
 
-A modern, high-performance web application for real-time IoT tracking, history playback, and geofencing.
+A modern, high-performance web application for real-time IoT tracking, history playback, and geofencing. Powered by the **TrackSolid Pro IoT API** for reliable, real-time telemetry.
 
 ## ✨ Features
 -   **Live Tracking**: Real-time position updates and device status.
