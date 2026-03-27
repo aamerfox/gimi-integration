@@ -3,6 +3,9 @@
 ## 1. Project Overview
 The SaudiEx Tracking App is a Vite-based React application providing real-time GPS tracking, historical data playback, geofencing, and alert management. It integrates seamlessly with the **TrackSolid Pro IoT API** to fetch live telemetry and device data.
 
+> [!NOTE]
+> For information regarding the status and setup of the mobile (Expo) application, please see [MOBILE_STATUS.md](./MOBILE_STATUS.md).
+
 ## 2. API Integration (TrackSolid Pro)
 The application communicates with the TrackSolid Pro platform using a secure, signed request mechanism:
 - **Authentication**: Uses MD5-based HMAC signatures for all API calls (`app_key`, `timestamp`, `sign`).
