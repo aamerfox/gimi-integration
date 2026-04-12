@@ -49,10 +49,11 @@ npx playwright test --ui
 npx playwright show-report
 ```
 
-## 5. Deployment & Maintenance
+## 5. Deployment & Maintenance (Google Cloud Run)
+- **Latest Deployment**: March 30, 2026 (Verified 🚀)
+- **URL**: [https://saudiex-tracker-256825749353.europe-west10.run.app](https://saudiex-tracker-256825749353.europe-west10.run.app)
 - **Build Production**: `npm run build` - results in the `dist/` folder.
 - **Docker**: A `Dockerfile` is provided for containerized deployment (e.g., Cloud Run).
-- **Environment**: Ensure `VITE_API_URL` or proxy settings in `vite.config.ts` are configured for your target environment.
-
+- **Environment**: Managed via `gcp-nginx-utf8.conf` proxying API requests directly to TrackSolid Pro (`https://eu-open.tracksolidpro.com/route/rest`).
 ---
-**Delivered by Antigravity AI on 2026-03-27.**
+**Delivered by Antigravity AI on 2026-03-30.**

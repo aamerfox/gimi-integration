@@ -142,7 +142,7 @@ export default function Alerts() {
     // Date range pickers
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const formatDate = (d: Date) => d.toISOString().slice(0, 16);
+    const formatDate = (d: Date) => new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
     const [startDate, setStartDate] = useState(formatDate(sevenDaysAgo));
     const [endDate, setEndDate] = useState(formatDate(now));
     const [selectedImei, setSelectedImei] = useState('');

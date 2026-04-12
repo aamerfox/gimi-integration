@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useDeviceStore } from '../store/devices';
 import { useGroupStore } from '../store/groups';
+import { useAuthStore } from '../store/auth';
+import { gimiService } from '../services/gimi';
 import type { Device } from '../store/devices';
 import { ChevronRight, ChevronDown, MoreVertical, Plus, Trash2, Edit2, FolderInput } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { isRecent } from '../utils/time';
 
 interface DevicePanelProps {
     onDeviceSelect?: () => void;
@@ -12,8 +15,36 @@ interface DevicePanelProps {
 export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
     const { devices, selectedDevice, selectDevice } = useDeviceStore();
     const { groups, deviceGroupMap, addGroup, removeGroup, assignDeviceToGroup, renameGroup } = useGroupStore();
+    const { accessToken } = useAuthStore();
     const [search, setSearch] = useState('');
     const { t } = useTranslation();
+
+    const [renamingDevice, setRenamingDevice] = useState<Device | null>(null);
+    const [newDeviceName, setNewDeviceName] = useState('');
+    const [isRenaming, setIsRenaming] = useState(false);
+
+    const handleRenameSubmit = async () => {
+        if (!renamingDevice || !newDeviceName.trim()) return;
+        setIsRenaming(true);
+        try {
+            await gimiService.updateDeviceName(accessToken || '', renamingDevice.imei, newDeviceName.trim());
+            
+            const updatedDevices = devices.map(d => 
+                d.imei === renamingDevice.imei ? { ...d, deviceName: newDeviceName.trim() } : d
+            );
+            useDeviceStore.getState().setDevices(updatedDevices);
+            if (selectedDevice?.imei === renamingDevice.imei) {
+                selectDevice({ ...selectedDevice, deviceName: newDeviceName.trim() });
+            }
+            
+            setRenamingDevice(null);
+        } catch (error) {
+            console.error('Failed to rename device', error);
+            alert('Failed to rename device');
+        } finally {
+            setIsRenaming(false);
+        }
+    };
 
     // Group UI states
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ default: true });
@@ -38,7 +69,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
         d.imei.includes(search)
     );
 
-    const onlineCount = devices.filter((d: Device) => d.status === '1' || d.posType === 'GPS').length;
+    const onlineCount = devices.filter((d: Device) => d.status === '1' || d.posType === 'GPS' || isRecent(d.sysTime)).length;
 
     // Grouping logic
     const groupedDevices: Record<string, Device[]> = {
@@ -182,6 +213,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                         setGroupMenuOpenFor={setGroupMenuOpenFor}
                         handleRenameGroup={handleRenameGroup}
                         handleDeleteGroup={handleDeleteGroup}
+                        onRenameDevice={(d: Device) => { setNewDeviceName(d.deviceName); setRenamingDevice(d); }}
                         menuRef={menuRef}
                     />
                 ))}
@@ -204,9 +236,64 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                     setGroupMenuOpenFor={setGroupMenuOpenFor}
                     handleRenameGroup={() => { }}
                     handleDeleteGroup={() => { }}
+                    onRenameDevice={(d: Device) => { setNewDeviceName(d.deviceName); setRenamingDevice(d); }}
                     menuRef={menuRef}
                 />
             </div>
+
+            {/* Rename Device Modal */}
+            {renamingDevice && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', zIndex: 9999,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div className="glass-panel" style={{
+                        background: 'var(--bg-primary)',
+                        padding: '24px',
+                        borderRadius: '8px',
+                        width: '320px',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+                    }}>
+                        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: 'var(--text-primary)' }}>
+                            Rename Device
+                        </h3>
+                        <input
+                            type="text"
+                            value={newDeviceName}
+                            onChange={e => setNewDeviceName(e.target.value)}
+                            className="sx-input"
+                            style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                border: '1px solid var(--border)',
+                                borderRadius: '4px',
+                                background: 'var(--bg-secondary)',
+                                color: 'var(--text-primary)',
+                                marginBottom: '16px'
+                            }}
+                            autoFocus
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                            <button
+                                className="sx-btn sx-btn-outline"
+                                onClick={() => setRenamingDevice(null)}
+                                disabled={isRenaming}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="sx-btn sx-btn-primary"
+                                onClick={handleRenameSubmit}
+                                disabled={isRenaming || !newDeviceName.trim()}
+                            >
+                                {isRenaming ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -232,12 +319,13 @@ interface GroupSectionProps {
     setGroupMenuOpenFor: (id: string | null) => void;
     handleRenameGroup: (id: string) => void;
     handleDeleteGroup: (id: string) => void;
+    onRenameDevice: (d: Device) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     menuRef: any;
 }
 
 function GroupSection({
-    id, name, devices, isExpanded, onToggle, groups, selectedDevice, selectDevice, onDeviceSelect, assignDeviceToGroup, menuOpenFor, setMenuOpenFor, groupMenuOpenFor, setGroupMenuOpenFor, handleRenameGroup, handleDeleteGroup, menuRef
+    id, name, devices, isExpanded, onToggle, groups, selectedDevice, selectDevice, onDeviceSelect, assignDeviceToGroup, menuOpenFor, setMenuOpenFor, groupMenuOpenFor, setGroupMenuOpenFor, handleRenameGroup, handleDeleteGroup, onRenameDevice, menuRef
 }: GroupSectionProps) {
     const isDefault = id === 'default';
     const { t } = useTranslation();
@@ -328,6 +416,10 @@ function GroupSection({
                                 assignDeviceToGroup(device.imei, gid);
                                 setMenuOpenFor(null);
                             }}
+                            onRename={() => {
+                                onRenameDevice(device);
+                                setMenuOpenFor(null);
+                            }}
                             menuRef={menuRef}
                         />
                     ))}
@@ -363,7 +455,7 @@ function GroupSection({
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, groups, currentGroupId, onAssign, menuRef }: any) {
+function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, groups, currentGroupId, onAssign, onRename, menuRef }: any) {
     const isOnline = device.status === '1' || device.posType === 'GPS';
     const batteryVal = parseFloat(String(device.batteryPowerVal || device.battery || '0'));
     const { t } = useTranslation();
@@ -427,6 +519,9 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
                     minWidth: '160px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}>
+                    <div className="group-menu-item" onClick={(e) => { e.stopPropagation(); onRename(); }}>
+                        <Edit2 size={14} /> Rename Device
+                    </div>
                     <div style={{ fontSize: '11px', padding: '6px 8px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
                         {t('devices.moveToGroup')}
                     </div>

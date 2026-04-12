@@ -3,3 +3,7 @@ node_modules/
 .DS_Store
 dist/
 build/
+*.apk
+*.webm
+playwright-report/
+test-results/

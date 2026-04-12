@@ -45,6 +45,7 @@ export default function Login() {
                     refreshToken: res.result.refreshToken,
                     expiresIn: res.result.expiresIn,
                     userId: account,
+                    passwordMd5: passwordMd5,
                     appKey: APP_KEY,
                 });
                 navigate('/');

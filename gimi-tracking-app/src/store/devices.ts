@@ -16,6 +16,8 @@ export interface Device {
     battery?: number;
     batteryPowerVal?: string;  // API battery percentage as string
     accStatus?: string;
+    sysTime?: string;          // Server processing time (often UTC)
+    heartbeatTime?: string;    // Last signal time
 }
 
 interface DeviceState {

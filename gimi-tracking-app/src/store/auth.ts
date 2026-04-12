@@ -6,11 +6,12 @@ interface AuthState {
     expiresIn: number | null;
     refreshToken: string | null;
     userId: string | null; // The account name
+    passwordMd5: string | null; // Hashed password for re-auth
     appKey: string | null;
     isAuthenticated: boolean;
 
     // Actions
-    setAuth: (data: { accessToken: string; expiresIn: number; refreshToken: string; userId: string; appKey: string }) => void;
+    setAuth: (data: { accessToken: string; expiresIn: number; refreshToken: string; userId: string; passwordMd5: string; appKey: string }) => void;
     logout: () => void;
 }
 
@@ -21,6 +22,7 @@ export const useAuthStore = create<AuthState>()(
             expiresIn: null,
             refreshToken: null,
             userId: null,
+            passwordMd5: null,
             appKey: null,
             isAuthenticated: false,
 
@@ -29,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
                 expiresIn: data.expiresIn,
                 refreshToken: data.refreshToken,
                 userId: data.userId,
+                passwordMd5: data.passwordMd5,
                 appKey: data.appKey,
                 isAuthenticated: true,
             }),
@@ -38,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
                 expiresIn: null,
                 refreshToken: null,
                 userId: null,
+                passwordMd5: null,
                 appKey: null,
                 isAuthenticated: false,
             }),

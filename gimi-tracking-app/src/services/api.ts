@@ -4,12 +4,12 @@ import { useAuthStore } from '../store/auth';
 
 // TrackSolid Pro Open API (EU node)
 // In development (npm run dev), use Vite's proxy (/api) to bypass CORS.
-// In production (built to /var/www/html), point to the Nginx reverse proxy (/token).
+// In production (built to /var/www/html), point to the Nginx reverse proxy (/api/gimi).
 import { Capacitor } from '@capacitor/core';
 
-let BASE_URL = import.meta.env.DEV ? '/api' : '/token';
+let BASE_URL = import.meta.env.DEV ? '/api' : '/api/gimi';
 if (Capacitor.isNativePlatform()) {
-    BASE_URL = 'https://saudiex-tracker-256825749353.europe-west10.run.app/token';
+    BASE_URL = 'https://saudiex-tracker-256825749353.europe-west10.run.app/api/gimi';
 }
 
 // App Credentials from Documentation
@@ -70,21 +70,59 @@ api.interceptors.request.use((config) => {
 
 // Response Interceptor
 api.interceptors.response.use(
-    (response) => {
+    async (response) => {
         const data = response.data;
-
-        // Debug: Log every response
-        console.log('[GIMI API Response]', data);
+        const originalRequest = response.config;
 
         // Gimi returns { code: 0, message: 'success', result: {...} } on success
         // On error: { code: <number>, message: 'error message' }
         if (data.code !== undefined && data.code !== 0) {
             // Handle token expiration / illegal access (TrackSolid Pro pattern: returns 200 with code 1004)
             if (data.code === 1004) {
-                console.error('[GIMI API] Token exception detected (1004), forcing logout...');
-                useAuthStore.getState().logout();
+                const { userId, passwordMd5, logout, setAuth } = useAuthStore.getState();
 
-                // If in browser environment, redirect to login
+                if (userId && passwordMd5 && !(originalRequest as any)._retry) {
+                    (originalRequest as any)._retry = true;
+                    console.log('[GIMI API] Token exception (1004). Attempting silent re-login...');
+
+                    try {
+                        // Perform a fresh login request directly
+                        const loginRes = await api.post('', {
+                            method: 'jimi.oauth.token.get',
+                            user_id: userId,
+                            user_pwd_md5: passwordMd5,
+                            expires_in: 7200,
+                        }) as any;
+
+                        if (loginRes.code === 0 && loginRes.result) {
+                            console.log('[GIMI API] Silent re-login successful. Retrying original request...');
+                            // Update the store with new tokens
+                            setAuth({
+                                accessToken: loginRes.result.accessToken,
+                                refreshToken: loginRes.result.refreshToken,
+                                expiresIn: loginRes.result.expiresIn,
+                                userId: userId,
+                                passwordMd5: passwordMd5,
+                                appKey: APP_KEY,
+                            });
+
+                            // Update the original request with the NEW access_token
+                            if (originalRequest.params) {
+                                originalRequest.params.access_token = loginRes.result.accessToken;
+                                originalRequest.params.sign = generateSignature(originalRequest.params);
+                            }
+
+                            return api(originalRequest);
+                        }
+                    } catch (reauthError) {
+                        console.error('[GIMI API] Silent re-login failed:', reauthError);
+                    }
+                }
+
+                // If silent re-login is not possible or failed
+                console.error('[GIMI API] Forcing logout due to token exception.');
+                logout();
+
                 if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
                     window.location.href = '/login';
                 }
@@ -97,11 +135,9 @@ api.interceptors.response.use(
     (error) => {
         console.error('[GIMI API Error]', error);
 
-        // Handle 401 Unauthorized status code (Vite proxy or Gimi might return this)
+        // Handle 401 Unauthorized status code
         if (error.response?.status === 401) {
-            console.error('[GIMI API] 401 Unauthorized detected, forcing logout...');
             useAuthStore.getState().logout();
-
             if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
                 window.location.href = '/login';
             }
