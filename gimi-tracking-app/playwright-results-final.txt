@@ -1,0 +1,28 @@
+﻿
+> gimi-tracking-app@0.0.0 test
+> playwright test
+
+
+Running 14 tests using 1 worker
+
+  Γ£ô   1 [chromium] ΓÇ║ tests\e2e\dashboard.spec.ts:27:5 ΓÇ║ Dashboard Page (protected) ΓÇ║ redirects to /login when not authenticated (923ms)
+  Γ£ô   2 [chromium] ΓÇ║ tests\e2e\dashboard.spec.ts:35:5 ΓÇ║ Dashboard Page (protected) ΓÇ║ renders dashboard layout with mocked auth (1.4s)
+  Γ£ô   3 [chromium] ΓÇ║ tests\e2e\dashboard.spec.ts:47:5 ΓÇ║ Dashboard Page (protected) ΓÇ║ dashboard page title contains SaudiEx (1.5s)
+  Γ£ô   4 [chromium] ΓÇ║ tests\e2e\login.spec.ts:8:5 ΓÇ║ Login Page ΓÇ║ should display login form with correct elements (911ms)
+  Γ£ô   5 [chromium] ΓÇ║ tests\e2e\login.spec.ts:24:5 ΓÇ║ Login Page ΓÇ║ should show error on invalid credentials (2.1s)
+  Γ£ô   6 [chromium] ΓÇ║ tests\e2e\login.spec.ts:37:5 ΓÇ║ Login Page ΓÇ║ should not allow submitting with empty fields (1.8s)
+  Γ£ô   7 [chromium] ΓÇ║ tests\e2e\login.spec.ts:45:5 ΓÇ║ Login Page ΓÇ║ should redirect unauthenticated users from / to /login (1.1s)
+  Γ£ô   8 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:29:5 ΓÇ║ Sidebar Navigation ΓÇ║ navigates to History page via sidebar (2.9s)
+  Γ£ô   9 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:36:5 ΓÇ║ Sidebar Navigation ΓÇ║ navigates to Geofences page via sidebar (3.6s)
+  Γ£ô  10 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:42:5 ΓÇ║ Sidebar Navigation ΓÇ║ navigates to Alerts page via sidebar (2.8s)
+  Γ£ô  11 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:48:5 ΓÇ║ Sidebar Navigation ΓÇ║ dashboard link navigates back to / (7.4s)
+  Γ£ô  12 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:65:5 ΓÇ║ Page Content Checks ΓÇ║ History page renders without crashing (4.3s)
+  Γ£ô  13 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:74:5 ΓÇ║ Page Content Checks ΓÇ║ Geofences page renders without crashing (5.8s)
+  Γ£ô  14 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:81:5 ΓÇ║ Page Content Checks ΓÇ║ Alerts page renders without crashing (7.7s)
+
+  14 passed (47.5s)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m

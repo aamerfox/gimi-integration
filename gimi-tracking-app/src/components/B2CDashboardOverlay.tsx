@@ -8,7 +8,7 @@ export default function B2CDashboardOverlay() {
     const { devices } = useDeviceStore();
 
     const totalDevices = devices.length;
-    const onlineCount = devices.filter((d) => d.status === '1' || d.posType === 'GPS' || isRecent(d.sysTime || '')).length;
+    const onlineCount = devices.filter((d) => d.status === '1' || d.posType === 'GPS' || isRecent(d.gpsTime || '')).length;
     const offlineCount = totalDevices - onlineCount;
 
     // Calculate approximate battery average 

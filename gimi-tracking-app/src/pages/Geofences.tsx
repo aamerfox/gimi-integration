@@ -6,7 +6,6 @@ import type { LocalGeofence } from '../store/geofences';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapZoomControls from '../components/MapZoomControls';
-import B2CGeofenceMobile from '../components/B2CGeofenceMobile';
 import { useTranslation } from 'react-i18next';
 
 const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
@@ -26,14 +25,6 @@ export default function Geofences() {
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const { t } = useTranslation();
-
-    const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
-    useEffect(() => {
-        const mq = window.matchMedia('(max-width: 768px)');
-        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-        mq.addEventListener('change', handler);
-        return () => mq.removeEventListener('change', handler);
-    }, []);
 
     // Form fields
     const [pickLat, setPickLat] = useState<number | null>(null);
@@ -249,15 +240,11 @@ export default function Geofences() {
     const activeCount = geofences.filter(g => g.enabled).length;
 
     // ── Render ────────────────────────────────────────────────────────────────
-    if (isMobile) {
-        return <B2CGeofenceMobile />;
-    }
-
     return (
         <div style={{ position: 'relative', height: '100vh', overflow: 'hidden' }}>
             {/* Map */}
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-            <MapZoomControls mapRef={mapRef as React.RefObject<L.Map>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
+            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
 
             {/* ─── Left panel: Geofence list ─────────────────────────────── */}
             <div

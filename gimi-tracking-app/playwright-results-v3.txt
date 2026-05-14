@@ -1,0 +1,93 @@
+﻿
+> gimi-tracking-app@0.0.0 test
+> playwright test
+
+
+Running 14 tests using 1 worker
+
+  Γ£ô   1 [chromium] ΓÇ║ tests\e2e\dashboard.spec.ts:27:5 ΓÇ║ Dashboard Page (protected) ΓÇ║ redirects to /login when not authenticated (1.5s)
+  Γ£ô   2 [chromium] ΓÇ║ tests\e2e\dashboard.spec.ts:35:5 ΓÇ║ Dashboard Page (protected) ΓÇ║ renders dashboard layout with mocked auth (1.5s)
+  Γ£ô   3 [chromium] ΓÇ║ tests\e2e\dashboard.spec.ts:47:5 ΓÇ║ Dashboard Page (protected) ΓÇ║ dashboard page title contains SaudiEx (989ms)
+  Γ£ô   4 [chromium] ΓÇ║ tests\e2e\login.spec.ts:8:5 ΓÇ║ Login Page ΓÇ║ should display login form with correct elements (1.3s)
+  Γ£ÿ   5 [chromium] ΓÇ║ tests\e2e\login.spec.ts:24:5 ΓÇ║ Login Page ΓÇ║ should show error on invalid credentials (11.0s)
+  Γ£ô   6 [chromium] ΓÇ║ tests\e2e\login.spec.ts:36:5 ΓÇ║ Login Page ΓÇ║ should not allow submitting with empty fields (1.3s)
+  Γ£ô   7 [chromium] ΓÇ║ tests\e2e\login.spec.ts:44:5 ΓÇ║ Login Page ΓÇ║ should redirect unauthenticated users from / to /login (2.8s)
+  Γ£ô   8 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:29:5 ΓÇ║ Sidebar Navigation ΓÇ║ navigates to History page via sidebar (3.7s)
+  Γ£ô   9 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:36:5 ΓÇ║ Sidebar Navigation ΓÇ║ navigates to Geofences page via sidebar (3.7s)
+  Γ£ô  10 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:42:5 ΓÇ║ Sidebar Navigation ΓÇ║ navigates to Alerts page via sidebar (2.5s)
+  Γ£ÿ  11 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:48:5 ΓÇ║ Sidebar Navigation ΓÇ║ dashboard link navigates back to / (30.8s)
+  Γ£ô  12 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:65:5 ΓÇ║ Page Content Checks ΓÇ║ History page renders without crashing (3.2s)
+  Γ£ô  13 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:74:5 ΓÇ║ Page Content Checks ΓÇ║ Geofences page renders without crashing (2.9s)
+  Γ£ô  14 [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:81:5 ΓÇ║ Page Content Checks ΓÇ║ Alerts page renders without crashing (2.2s)
+
+
+  1) [chromium] ΓÇ║ tests\e2e\login.spec.ts:24:5 ΓÇ║ Login Page ΓÇ║ should show error on invalid credentials 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('[style*="rgba(239,68,68"]')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 10000ms[22m
+    [2m  - waiting for locator('[style*="rgba(239,68,68"]')[22m
+
+
+      31 |
+      32 |         // After the failed request, an error message should appear
+    > 33 |         await expect(page.locator('[style*="rgba(239,68,68"]')).toBeVisible({ timeout: 10000 });
+         |                                                                 ^
+      34 |     });
+      35 |
+      36 |     test('should not allow submitting with empty fields', async ({ page }) => {
+        at C:\Users\aamer\Desktop\SaudiEx project agents\gimi integrartion\gimi-tracking-app\tests\e2e\login.spec.ts:33:65
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\login-Login-Page-should-show-error-on-invalid-credentials-chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    attachment #2: video (video/webm) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\login-Login-Page-should-show-error-on-invalid-credentials-chromium\video.webm
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\login-Login-Page-should-show-error-on-invalid-credentials-chromium\error-context.md
+
+  2) [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:48:5 ΓÇ║ Sidebar Navigation ΓÇ║ dashboard link navigates back to / 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByRole('link', { name: /dashboard/i }).first()[22m
+
+
+      53 |         // Click Dashboard link
+      54 |         const dashLink = page.getByRole('link', { name: /dashboard/i }).first();
+    > 55 |         await dashLink.click();
+         |                        ^
+      56 |         await expect(page).toHaveURL(/\/$/);
+      57 |     });
+      58 | });
+        at C:\Users\aamer\Desktop\SaudiEx project agents\gimi integrartion\gimi-tracking-app\tests\e2e\navigation.spec.ts:55:24
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\navigation-Sidebar-Navigat-e6e98-ard-link-navigates-back-to--chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    attachment #2: video (video/webm) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\navigation-Sidebar-Navigat-e6e98-ard-link-navigates-back-to--chromium\video.webm
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\navigation-Sidebar-Navigat-e6e98-ard-link-navigates-back-to--chromium\error-context.md
+
+  2 failed
+    [chromium] ΓÇ║ tests\e2e\login.spec.ts:24:5 ΓÇ║ Login Page ΓÇ║ should show error on invalid credentials 
+    [chromium] ΓÇ║ tests\e2e\navigation.spec.ts:48:5 ΓÇ║ Sidebar Navigation ΓÇ║ dashboard link navigates back to / 
+  12 passed (1.2m)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m

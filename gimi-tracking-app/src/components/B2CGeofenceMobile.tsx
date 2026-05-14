@@ -32,7 +32,7 @@ export default function B2CGeofenceMobile() {
         });
 
         mapRef.current = map;
-        setTimeout(() => { map.invalidateSize(); setMapReady(true); }, 150);
+        setTimeout(() => { map.invalidateSize(); }, 150);
 
         // Draw Circle
         L.circle([lat, lng], {

@@ -3,10 +3,8 @@ import { useDeviceStore } from '../store/devices';
 import type { Device } from '../store/devices';
 import LiveMap, { type LiveMapHandle } from '../components/LiveMap';
 import DevicePanel from '../components/DevicePanel';
-import B2CDashboardOverlay from '../components/B2CDashboardOverlay';
 import MapZoomControls from '../components/MapZoomControls';
 import { useTranslation } from 'react-i18next';
-import { formatGimiTime, isRecent } from '../utils/time';
 
 function useIsMobile() {
     const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
@@ -29,23 +27,15 @@ export default function Dashboard() {
     const isMobile = useIsMobile();
     const { t } = useTranslation();
 
-    useEffect(() => {
-        const handleOpenSheet = () => setShowMobilePanel(true);
-        document.addEventListener('open-device-sheet', handleOpenSheet);
-        return () => document.removeEventListener('open-device-sheet', handleOpenSheet);
-    }, []);
-
     // Update "last updated" timestamp whenever devices change
     useEffect(() => {
         if (devices.length > 0) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
-            const locale = document.documentElement.dir === 'rtl' ? 'ar-SA' : 'en-US';
-            setLastUpdate(new Date().toLocaleTimeString(locale, timeOptions));
+            setLastUpdate(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
         }
     }, [devices]);
 
-    const onlineCount = devices.filter((d: Device) => d.status === '1' || d.posType === 'GPS' || isRecent(d.sysTime)).length;
+    const onlineCount = devices.filter((d: Device) => d.status === '1' || d.posType === 'GPS').length;
     const offlineCount = devices.length - onlineCount;
 
     return (
@@ -166,7 +156,7 @@ export default function Dashboard() {
                                 <InfoTile label="Speed" value={`${selectedDevice.speed || 0} km/h`} />
                                 <InfoTile label="Battery" value={`${selectedDevice.batteryPowerVal || '—'}%`} />
                                 <InfoTile label="Position" value={selectedDevice.posType || 'N/A'} />
-                                <InfoTile label="Last Fix" value={formatGimiTime(selectedDevice.sysTime || selectedDevice.gpsTime)} />
+                                <InfoTile label="GPS Time" value={selectedDevice.gpsTime?.split(' ')[1] || '—'} />
                             </div>
                         </div>
                     </div>
@@ -178,11 +168,6 @@ export default function Dashboard() {
                         mapRef={mapRef as React.RefObject<any>}
                         style={{ position: 'absolute', bottom: 24, insetInlineEnd: 16, zIndex: 998 }}
                     />
-                )}
-
-                {/* ── MOBILE: B2C Dashboard Overlay ─────────────────── */}
-                {isMobile && !showMobilePanel && (!selectedDevice || !selectedDevice.lat) && (
-                    <B2CDashboardOverlay />
                 )}
 
                 {/* ── MOBILE: Device list bottom sheet ─────────────────── */}
@@ -258,7 +243,7 @@ export default function Dashboard() {
                             <InfoTile label="Speed" value={`${selectedDevice.speed || 0} km/h`} />
                             <InfoTile label="Battery" value={`${selectedDevice.batteryPowerVal || '—'}%`} />
                             <InfoTile label="Position" value={selectedDevice.posType || 'N/A'} />
-                            <InfoTile label="Last Fix" value={formatGimiTime(selectedDevice.sysTime || selectedDevice.gpsTime)} />
+                            <InfoTile label="GPS Time" value={selectedDevice.gpsTime?.split(' ')[1] || '—'} />
                         </div>
                     </div>
                 )}
@@ -287,7 +272,7 @@ export default function Dashboard() {
                     {offlineCount} {t('dashboard.offlineDevices')}
                 </span>
                 <span style={{ marginInlineStart: 'auto' }} dir="ltr">
-                    {loading ? t('common.loading') : t('dashboard.updated').replace('{{time}}', lastUpdate)}
+                    {loading ? t('common.loading') : `Updated ${lastUpdate}`}
                 </span>
             </div>
         </div >

@@ -77,7 +77,7 @@ export default function Devices() {
             ) : (
                 <div className="grid grid-cols-2 gap-3 mt-4">
                     {filteredDevices.map(device => {
-                        const isOnline = device.status === '1' || device.posType === 'GPS' || isRecent(device.sysTime || '');
+                        const isOnline = device.status === '1' || device.posType === 'GPS' || isRecent(device.gpsTime || '');
                         const batteryPower = parseInt(device.batteryPowerVal || '0') || 0;
                         
                         return (
@@ -110,7 +110,7 @@ export default function Devices() {
                                 <div className="flex items-center justify-between mt-auto border-t border-slate-100 dark:border-slate-700/50 pt-2">
                                     <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                         <span>⏱️</span>
-                                        <span>{formatGimiTime(device.sysTime)}</span>
+                                        <span>{formatGimiTime(device.gpsTime)}</span>
                                     </div>
                                     <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300">
                                         {getBatteryIcon(batteryPower)}

@@ -166,7 +166,7 @@ export default function ShareManage() {
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    {t(d.labelKey, d.label)}
+                                    {d.label}
                                 </button>
                             ))}
                         </div>
@@ -199,7 +199,7 @@ export default function ShareManage() {
                         gap: '8px'
                     }}>
                         <Lock size={14} color="var(--accent)" />
-                        {t('share.cryptoDesc')}
+                        Links are cryptographically signed (HMAC-SHA256) and automatically expire.
                     </div>
                 </div>
 

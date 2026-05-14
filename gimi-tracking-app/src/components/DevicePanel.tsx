@@ -1,12 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useDeviceStore } from '../store/devices';
 import { useGroupStore } from '../store/groups';
-import { useAuthStore } from '../store/auth';
-import { gimiService } from '../services/gimi';
 import type { Device } from '../store/devices';
 import { ChevronRight, ChevronDown, MoreVertical, Plus, Trash2, Edit2, FolderInput } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { isRecent } from '../utils/time';
 
 interface DevicePanelProps {
     onDeviceSelect?: () => void;
@@ -15,36 +12,8 @@ interface DevicePanelProps {
 export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
     const { devices, selectedDevice, selectDevice } = useDeviceStore();
     const { groups, deviceGroupMap, addGroup, removeGroup, assignDeviceToGroup, renameGroup } = useGroupStore();
-    const { accessToken } = useAuthStore();
     const [search, setSearch] = useState('');
     const { t } = useTranslation();
-
-    const [renamingDevice, setRenamingDevice] = useState<Device | null>(null);
-    const [newDeviceName, setNewDeviceName] = useState('');
-    const [isRenaming, setIsRenaming] = useState(false);
-
-    const handleRenameSubmit = async () => {
-        if (!renamingDevice || !newDeviceName.trim()) return;
-        setIsRenaming(true);
-        try {
-            await gimiService.updateDeviceName(accessToken || '', renamingDevice.imei, newDeviceName.trim());
-            
-            const updatedDevices = devices.map(d => 
-                d.imei === renamingDevice.imei ? { ...d, deviceName: newDeviceName.trim() } : d
-            );
-            useDeviceStore.getState().setDevices(updatedDevices);
-            if (selectedDevice?.imei === renamingDevice.imei) {
-                selectDevice({ ...selectedDevice, deviceName: newDeviceName.trim() });
-            }
-            
-            setRenamingDevice(null);
-        } catch (error) {
-            console.error('Failed to rename device', error);
-            alert('Failed to rename device');
-        } finally {
-            setIsRenaming(false);
-        }
-    };
 
     // Group UI states
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ default: true });
@@ -69,7 +38,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
         d.imei.includes(search)
     );
 
-    const onlineCount = devices.filter((d: Device) => d.status === '1' || d.posType === 'GPS' || isRecent(d.sysTime)).length;
+    const onlineCount = devices.filter((d: Device) => d.status === '1' || d.posType === 'GPS').length;
 
     // Grouping logic
     const groupedDevices: Record<string, Device[]> = {
@@ -108,7 +77,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
     };
 
     const handleDeleteGroup = (id: string) => {
-        if (window.confirm(t('devices.deleteGroupConfirm', 'Are you sure you want to delete this group? Devices will be moved to Default group.'))) {
+        if (window.confirm('Are you sure you want to delete this group? Devices will be moved to Default group.')) {
             removeGroup(id);
         }
         setGroupMenuOpenFor(null);
@@ -135,7 +104,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                 {/* Search */}
                 <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-                        saudiex ({t('devices.stock')}: {devices.length} / {t('devices.total')}: {devices.length})
+                        saudiex(Stock{devices.length}/Total{devices.length})
                     </div>
                     <div style={{ position: 'relative' }}>
                         <input
@@ -164,18 +133,30 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                 </div>
 
                 {/* Add Group Button */}
-                <div style={{ marginBottom: '16px', padding: '0 4px' }}>
+                <div style={{ marginBottom: '16px' }}>
                     <button
                         onClick={handleAddGroup}
-                        className="sx-btn sx-btn-sm sx-btn-outline"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: 'var(--accent)',
+                            border: '1px solid var(--accent)',
+                            background: 'transparent',
+                            padding: '6px 16px',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                        }}
                     >
-                        <Plus size={16} /> {t('devices.addGroup')}
+                        <Plus size={16} /> {t('common.add')} Group
                     </button>
                 </div>
 
                 {/* Status Bar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px' }}>{t('alertsFilters.all')} {devices.length}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px' }}>All {devices.length}</span>
                     <div style={{ display: 'flex', gap: '12px', fontSize: '13px', fontWeight: 500 }}>
                         <span style={{ color: 'var(--online)', display: 'flex', alignItems: 'center', gap: '4px' }}>▲ {onlineCount}</span>
                         <span style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '4px' }}>♥ {devices.length - onlineCount}</span>
@@ -213,7 +194,6 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                         setGroupMenuOpenFor={setGroupMenuOpenFor}
                         handleRenameGroup={handleRenameGroup}
                         handleDeleteGroup={handleDeleteGroup}
-                        onRenameDevice={(d: Device) => { setNewDeviceName(d.deviceName); setRenamingDevice(d); }}
                         menuRef={menuRef}
                     />
                 ))}
@@ -221,7 +201,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                 {/* Render Default Group */}
                 <GroupSection
                     id="default"
-                    name={t('devices.defaultGroup', 'Default group')}
+                    name="Default group"
                     devices={groupedDevices.default}
                     isExpanded={expandedGroups.default ?? true}
                     onToggle={(e) => toggleGroup('default', e)}
@@ -236,64 +216,9 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                     setGroupMenuOpenFor={setGroupMenuOpenFor}
                     handleRenameGroup={() => { }}
                     handleDeleteGroup={() => { }}
-                    onRenameDevice={(d: Device) => { setNewDeviceName(d.deviceName); setRenamingDevice(d); }}
                     menuRef={menuRef}
                 />
             </div>
-
-            {/* Rename Device Modal */}
-            {renamingDevice && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', zIndex: 9999,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div className="glass-panel" style={{
-                        background: 'var(--bg-primary)',
-                        padding: '24px',
-                        borderRadius: '8px',
-                        width: '320px',
-                        border: '1px solid var(--border)',
-                        boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
-                    }}>
-                        <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: 'var(--text-primary)' }}>
-                            Rename Device
-                        </h3>
-                        <input
-                            type="text"
-                            value={newDeviceName}
-                            onChange={e => setNewDeviceName(e.target.value)}
-                            className="sx-input"
-                            style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                border: '1px solid var(--border)',
-                                borderRadius: '4px',
-                                background: 'var(--bg-secondary)',
-                                color: 'var(--text-primary)',
-                                marginBottom: '16px'
-                            }}
-                            autoFocus
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                            <button
-                                className="sx-btn sx-btn-outline"
-                                onClick={() => setRenamingDevice(null)}
-                                disabled={isRenaming}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="sx-btn sx-btn-primary"
-                                onClick={handleRenameSubmit}
-                                disabled={isRenaming || !newDeviceName.trim()}
-                            >
-                                {isRenaming ? 'Saving...' : 'Save'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
@@ -319,16 +244,14 @@ interface GroupSectionProps {
     setGroupMenuOpenFor: (id: string | null) => void;
     handleRenameGroup: (id: string) => void;
     handleDeleteGroup: (id: string) => void;
-    onRenameDevice: (d: Device) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     menuRef: any;
 }
 
 function GroupSection({
-    id, name, devices, isExpanded, onToggle, groups, selectedDevice, selectDevice, onDeviceSelect, assignDeviceToGroup, menuOpenFor, setMenuOpenFor, groupMenuOpenFor, setGroupMenuOpenFor, handleRenameGroup, handleDeleteGroup, onRenameDevice, menuRef
+    id, name, devices, isExpanded, onToggle, groups, selectedDevice, selectDevice, onDeviceSelect, assignDeviceToGroup, menuOpenFor, setMenuOpenFor, groupMenuOpenFor, setGroupMenuOpenFor, handleRenameGroup, handleDeleteGroup, menuRef
 }: GroupSectionProps) {
     const isDefault = id === 'default';
-    const { t } = useTranslation();
 
     return (
         <div style={{ marginBottom: '12px' }}>
@@ -416,16 +339,12 @@ function GroupSection({
                                 assignDeviceToGroup(device.imei, gid);
                                 setMenuOpenFor(null);
                             }}
-                            onRename={() => {
-                                onRenameDevice(device);
-                                setMenuOpenFor(null);
-                            }}
                             menuRef={menuRef}
                         />
                     ))}
                     {devices.length === 0 && (
                         <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                            {t('devices.emptyGroup')}
+                            Empty group
                         </div>
                     )}
                 </div>
@@ -455,16 +374,34 @@ function GroupSection({
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, groups, currentGroupId, onAssign, onRename, menuRef }: any) {
+function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, groups, currentGroupId, onAssign, menuRef }: any) {
     const isOnline = device.status === '1' || device.posType === 'GPS';
     const batteryVal = parseFloat(String(device.batteryPowerVal || device.battery || '0'));
-    const { t } = useTranslation();
 
     return (
         <div style={{ position: 'relative' }}>
             <button
                 onClick={onSelect}
-                className={`device-item-btn ${isSelected ? 'selected' : ''}`}
+                style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: isSelected ? '1px solid var(--border-accent)' : '1px solid transparent',
+                    background: isSelected ? 'var(--accent-dim)' : 'transparent',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    color: 'inherit',
+                    transition: 'all 0.15s ease',
+                    marginBottom: '4px',
+                }}
+                onMouseEnter={(e) => {
+                    if (!isSelected) e.currentTarget.style.background = 'var(--bg-primary)';
+                }}
+                onMouseLeave={(e) => {
+                    if (!isSelected) e.currentTarget.style.background = 'transparent';
+                }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {/* Vehicle Icon */}
@@ -519,15 +456,12 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
                     minWidth: '160px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}>
-                    <div className="group-menu-item" onClick={(e) => { e.stopPropagation(); onRename(); }}>
-                        <Edit2 size={14} /> Rename Device
-                    </div>
                     <div style={{ fontSize: '11px', padding: '6px 8px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
-                        {t('devices.moveToGroup')}
+                        Move to group...
                     </div>
                     {currentGroupId !== 'default' && (
                         <div className="group-menu-item" onClick={(e) => { e.stopPropagation(); onAssign(null); }}>
-                            <FolderInput size={14} /> {t('devices.defaultGroup', 'Default group')}
+                            <FolderInput size={14} /> Default group
                         </div>
                     )}
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -540,7 +474,7 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
                     ))}
                     {groups.length === 0 && currentGroupId === 'default' && (
                         <div style={{ padding: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                            {t('devices.noOtherGroups', 'No other groups exist.')}
+                            No other groups exist.
                         </div>
                     )}
                 </div>

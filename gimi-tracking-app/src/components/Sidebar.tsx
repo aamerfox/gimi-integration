@@ -162,7 +162,7 @@ export default function Sidebar() {
                                         <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                                     </svg>
                                 )}
-                                {t('settings.theme')}
+                                {isLight ? 'Dark Mode' : 'Light Mode'}
                             </button>
 
                             <button
@@ -178,7 +178,7 @@ export default function Sidebar() {
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                                 </svg>
-                                {t('auth.logout')}
+                                {t('auth.login')}
                             </button>
                             <div style={{ padding: '0 12px' }}>
                                 <LanguageSwitcher />
@@ -224,19 +224,17 @@ export default function Sidebar() {
             }}>
                 <div style={{
                     width: 32, height: 32, borderRadius: '10px',
-                    background: 'linear-gradient(135deg, var(--accent), #00b894)',
+                    background: 'linear-gradient(135deg, #1e3a8a, #0891b2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#0a0e1a" stroke="none">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                    </svg>
+                    <span dir="ltr" style={{ color: '#fff', fontSize: '13px', fontWeight: 800, letterSpacing: '-0.03em' }}>t+</span>
                 </div>
-                <span style={{
+                <span dir="ltr" style={{
                     fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)',
                     whiteSpace: 'nowrap', opacity: expanded ? 1 : 0,
                     transition: 'opacity 0.2s ease', letterSpacing: '-0.02em',
                 }}>
-                    SaudiEx
+                    trace+
                 </span>
             </div>
 
@@ -345,7 +343,7 @@ export default function Sidebar() {
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
                     <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 0.2s ease' }}>
-                        {t('auth.logout')}
+                        {t('auth.login')}
                     </span>
                 </button>
                 {expanded && (

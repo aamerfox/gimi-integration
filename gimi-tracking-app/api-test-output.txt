@@ -1,0 +1,87 @@
+================================================================
+  SaudiEx Tracker - GIMI API Full Integration Test
+  UTC Time  : 2026-02-23 17:22:23
+  Account   : GBH2025
+================================================================
+
+--- T01: Authentication ---
+  https://eu-open.tracksolidpro.com/route/rest  ->  code=0  msg=success
+  Raw result: {"appKey":"8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558","account":"GBH2025","accessToken":"19bd4ae61d61150a0cb3995baabdb934","refreshToken":"956e2a019d16a5dece610b05f6e69bb9","expiresIn":7200,"ti
+[ OK ] [T01] Authentication (jimi.oauth.token.get)
+       Code: 0  |  Token: 19bd4ae61d61150a0cb3995baabdb934  |  Endpoint: https://eu-open.tracksolidpro.com/route/rest
+
+--- T02: Device List ---
+  code=0  msg=success
+[ OK ] [T02] Device List (jimi.user.device.list)
+       Code: 0  |  1 device(s). First IMEI: 780901703187828
+       Data: [{"name":"PB704-87828","imei":"780901703187828","status":"NORMAL"}]
+
+--- T03: Live Locations ---
+  code=0  msg=success
+[ OK ] [T03] Live Locations (jimi.user.device.location.list)
+       Code: 0  |  1 device location(s). Sample: lat=24.816437, lng=46.654068, speed=nullkm/h, posType=BEACON
+       Data: [{"imei":"780901703187828","lat":24.816437,"lng":46.654068,"speed":null,"direction":null,"gpsTime":"2026-02-23 16:58:11","posType":"BEACON"}]
+
+--- T04: Track History ---
+  code=0  msg=success
+[ OK ] [T04] Track History (jimi.device.track.list)
+       Code: 0  |  145 GPS point(s) in last 24h for 780901703187828
+       Data: [{"lat":24.816645,"lng":46.654053,"gpsTime":"2026-02-22 17:28:56"},{"lat":24.816624,"lng":46.654053,"gpsTime":"2026-02-22 17:29:40"},{"lat":24.816626,"lng":46.65404,"gpsTime":"2026-02-22 17:31:14"}]
+
+--- T05: Geofence List ---
+  code=0  msg=成功
+[ OK ] [T05] Geofence List (jimi.open.platform.fence.list)
+       Code: 0  |  0 platform fence(s) found
+       Data: []
+
+--- T06: Device Fence Create ---
+  code=12003  msg=创建电子围栏失败，结果码：41005
+[WARN] [T06] Device Fence Create
+       Code: 12003  |  创建电子围栏失败，结果码：41005
+
+--- T07: Platform Fence Create ---
+  code=undefined  msg=Required String parameter 'geom' is not present
+[WARN] [T07] Platform Fence Create
+       Code: undefined  |  Required String parameter 'geom' is not present
+
+--- T08: Device Alarms ---
+  code=1001  msg=缺少方法名参数或不存在的方法名
+[WARN] [T08] Device Alarms
+       Code: 1001  |  缺少方法名参数或不存在的方法名
+
+--- T09: All-Device Alarms ---
+  code=1001  msg=缺少方法名参数或不存在的方法名
+[WARN] [T09] All-Device Alarms
+       Code: 1001  |  缺少方法名参数或不存在的方法名
+
+--- T10: Signature Algorithm ---
+[ OK ] [T10] MD5 Signature
+       Code: -  |  sig=533854127CE448FE65B4A02B6559D62A  valid=true
+
+================================================================
+  FINAL SUMMARY
+================================================================
+  PASS: 6  WARN: 4  FAIL: 0  SKIP: 0  TOTAL: 10
+
+  [ OK ] T01 | Authentication (jimi.oauth.token.get)
+         Code=0 | Token: 19bd4ae61d61150a0cb3995baabdb934  |  Endpoint: https://eu-open.tracksolidpro.com/route/rest
+  [ OK ] T02 | Device List (jimi.user.device.list)
+         Code=0 | 1 device(s). First IMEI: 780901703187828
+  [ OK ] T03 | Live Locations (jimi.user.device.location.list)
+         Code=0 | 1 device location(s). Sample: lat=24.816437, lng=46.654068, speed=nullkm/h, posType=BEACON
+  [ OK ] T04 | Track History (jimi.device.track.list)
+         Code=0 | 145 GPS point(s) in last 24h for 780901703187828
+  [ OK ] T05 | Geofence List (jimi.open.platform.fence.list)
+         Code=0 | 0 platform fence(s) found
+  [WARN] T06 | Device Fence Create
+         Code=12003 | 创建电子围栏失败，结果码：41005
+  [WARN] T07 | Platform Fence Create
+         Code=undefined | Required String parameter 'geom' is not present
+  [WARN] T08 | Device Alarms
+         Code=1001 | 缺少方法名参数或不存在的方法名
+  [WARN] T09 | All-Device Alarms
+         Code=1001 | 缺少方法名参数或不存在的方法名
+  [ OK ] T10 | MD5 Signature
+         Code=- | sig=533854127CE448FE65B4A02B6559D62A  valid=true
+================================================================
+  JSON saved: api-test-report.json

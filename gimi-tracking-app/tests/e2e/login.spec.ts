@@ -8,37 +8,35 @@ test.describe('Login Page', () => {
     test('should display login form with correct elements', async ({ page }) => {
         // Logo / branding
         await expect(page.locator('h1')).toContainText('SaudiEx');
-        
-        // Subtitle (using the second text or just making sure there is a p tag)
-        await expect(page.locator('form p').first()).toBeVisible();
+        await expect(page.getByText('Fleet Tracking Platform')).toBeVisible();
 
         // Inputs
-        await expect(page.locator('input[type="text"]')).toBeVisible();
-        await expect(page.locator('input[type="password"]')).toBeVisible();
+        await expect(page.getByPlaceholder('Enter your account ID')).toBeVisible();
+        await expect(page.getByPlaceholder('Enter your password')).toBeVisible();
 
         // Submit button
-        await expect(page.locator('button[type="submit"]')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
 
         // Footer
-        await expect(page.locator('p', { hasText: /Powered by SaudiEx/i })).toBeVisible();
+        await expect(page.getByText('Powered by TrackSolid Pro')).toBeVisible();
     });
 
     test('should show error on invalid credentials', async ({ page }) => {
-        await page.locator('input[type="text"]').fill('invalid_user_xyz');
-        await page.locator('input[type="password"]').fill('wrongpassword_xyz');
-        await page.locator('button[type="submit"]').click();
+        await page.getByPlaceholder('Enter your account ID').fill('invalid_user_xyz');
+        await page.getByPlaceholder('Enter your password').fill('wrongpassword_xyz');
+        await page.getByRole('button', { name: 'Sign In' }).click();
 
-        // Button should show loading spinner/state during request (disabled state is a good indicator)
-        await expect(page.locator('button[type="submit"]')).toBeDisabled({ timeout: 3000 });
+        // Button should show loading spinner during request
+        await expect(page.getByText('Signing in...')).toBeVisible({ timeout: 3000 });
 
-        // After the failed request, button returns to active and we stay on /login
-        await expect(page.locator('button[type="submit"]')).toBeEnabled({ timeout: 15000 });
+        // After the failed request, button returns to 'Sign In' and we stay on /login
+        await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible({ timeout: 15000 });
         await expect(page).toHaveURL(/\/login/);
     });
 
     test('should not allow submitting with empty fields', async ({ page }) => {
         // HTML5 validation – form should not submit
-        await page.locator('button[type="submit"]').click();
+        await page.getByRole('button', { name: 'Sign In' }).click();
 
         // Should still be on login page
         await expect(page).toHaveURL(/\/login/);

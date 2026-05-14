@@ -3,7 +3,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useDeviceStore } from '../store/devices';
 import type { Device } from '../store/devices';
-import { formatGimiTime, isRecent } from '../utils/time';
 
 export interface LiveMapHandle {
     zoomIn: () => void;
@@ -57,7 +56,7 @@ function createMarkerIcon(isOnline: boolean, isSelected: boolean) {
     });
 }
 
-const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_unusedProps, ref) {
+const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
     const mapRef = useRef<L.Map | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -79,8 +78,8 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_unusedProps, ref) {
         };
 
         const map = L.map(containerRef.current, {
-            center: [26.5, 45.1], // Between Riyadh and Damascus
-            zoom: 5,
+            center: [24.7136, 46.6753], // Riyadh
+            zoom: 6,
             zoomControl: false,  // We render our own zoom buttons in Dashboard
             attributionControl: true,
             layers: [streetLayer] // Default to street
@@ -123,12 +122,10 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_unusedProps, ref) {
 
         // Add/update markers
         devicesWithLocation.forEach((device: Device) => {
-            const isOnline = device.status === '1' || device.posType === 'GPS' || isRecent(device.sysTime);
+            const isOnline = device.status === '1' || device.posType === 'GPS';
             const isSelected = selectedDevice?.imei === device.imei;
             const icon = createMarkerIcon(isOnline, isSelected);
             const position: L.LatLngExpression = [device.lat as number, device.lng as number];
-
-            const displayTime = formatGimiTime(device.sysTime || device.gpsTime);
 
             const existing = markersRef.current.get(device.imei);
             if (existing) {
@@ -148,7 +145,7 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_unusedProps, ref) {
                             <span style="font-size:12px;color:${isOnline ? '#22c55e' : '#6b7280'}">${isOnline ? 'Online' : 'Offline'}</span>
                         </div>
                         <div style="font-size:12px;color:#94a3b8">${(device.lat || 0).toFixed(5)}, ${(device.lng || 0).toFixed(5)}</div>
-                        <div style="font-size:11px;color:#64748b;margin-top:4px">${displayTime}</div>
+                        ${device.gpsTime ? `<div style="font-size:11px;color:#64748b;margin-top:4px">${device.gpsTime}</div>` : ''}
                     </div>
                 `;
                 marker.bindPopup(popupContent);
@@ -162,7 +159,7 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_unusedProps, ref) {
         const map = mapRef.current;
         if (!map || !selectedDevice) return;
         const d = selectedDevice as Device;
-        if (d.lat !== undefined && d.lng !== undefined) {
+        if (d.lat && d.lng) {
             map.flyTo([d.lat, d.lng], 15, { duration: 1 });
         }
     }, [selectedDevice]);

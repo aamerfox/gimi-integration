@@ -73,7 +73,7 @@ function createMarkerIcon() {
             <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                 <div style="
                     width: 36px; height: 36px; border-radius: 50%;
-                    background: rgba(0,212,170,0.3); border: 2px solid #00d4aa;
+                    background: rgba(8,145,178,0.3); border: 2px solid #0891b2;
                     display: flex; align-items: center; justify-content: center;
                     animation: pulse-glow 2s ease-in-out infinite;
                 ">
@@ -256,13 +256,13 @@ export default function ViewShare() {
                 padding: '0 24px',
                 gap: '12px',
             }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, var(--accent), #00b894)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #1e3a8a, #0891b2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="#0a0e1a" stroke="none">
                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                     </svg>
                 </div>
                 <div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>SaudiEx Live Share</div>
+                    <div dir="ltr" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>trace+ Live Share</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{deviceName || t('common.loading')}</div>
                 </div>
 
@@ -274,7 +274,7 @@ export default function ViewShare() {
             </div>
 
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-            <MapZoomControls mapRef={mapRef as React.RefObject<L.Map>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
+            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
         </div>
     );
 }

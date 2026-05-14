@@ -145,14 +145,4 @@ export const gimiService = {
             page_size: pageSize.toString(),
         });
     },
-
-    // 11. Devices — Update Device Name
-    updateDeviceName: async (accessToken: string, imei: string, newName: string) => {
-        return api.post('', {
-            method: 'jimi.open.device.update',
-            access_token: accessToken,
-            imei: imei,
-            device_name: newName,
-        });
-    },
 };

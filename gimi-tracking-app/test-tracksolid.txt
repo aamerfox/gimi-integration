@@ -1,0 +1,15 @@
+=== GIMI/TrackSolid Pro API Test (UTC + All Endpoints) ===
+Local time: 2026-02-21T07:01:19.667Z
+UTC timestamp: 2026-02-21 07:01:19
+APP_KEY: 8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558 (length: 48)
+APP_SECRET: d1bf0654370a4a148abacd02abe8146e
+
+  FAIL(1001) | https://hk-open.tracksolidpro.com/route/rest | pwd=as-is | ts=2026-02-21 07:01:19
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | https://hk-open.tracksolidpro.com/route/rest | pwd=md5(pwd) | ts=2026-02-21 07:01:20
+       msg: 缺少AppKey参数或无效的AppKey
+  PASS | https://eu-open.tracksolidpro.com/route/rest | pwd=as-is | ts=2026-02-21 07:01:21
+       msg: success
+       TOKEN: {"appKey":"8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558","account":"GBH2025","accessToken":"3b7d56c2e369861be7a386c6...
+
+>>> SUCCESS! Endpoint: https://eu-open.tracksolidpro.com/route/rest, password: as-is <<<

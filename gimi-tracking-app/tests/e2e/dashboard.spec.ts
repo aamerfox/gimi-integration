@@ -44,7 +44,7 @@ test.describe('Dashboard Page (protected)', () => {
         await expect(page).not.toHaveURL(/\/login/);
     });
 
-    test('dashboard page title contains SaudiEx', async ({ page }) => {
+    test('dashboard page title contains trace+', async ({ page }) => {
         await mockAuth(page);
         await page.goto('/');
         // Just check the page loaded and we are on the dashboard

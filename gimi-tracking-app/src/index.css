@@ -1,32 +1,32 @@
 /* ================================================================
-   SaudiEx Dark — AVL Tracking Design System
+   trace+ — AVL Tracking Design System
    ================================================================ */
 
 @import 'tailwindcss';
 
 /* ── Design Tokens — Dark (default) ─────────────────────────── */
 :root {
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #111827;
-  --bg-elevated: #1a2035;
-  --bg-card: rgba(17, 24, 39, 0.85);
+  --bg-primary: #0a0f1d;
+  --bg-secondary: #121c33;
+  --bg-elevated: #1e3a8a;
+  --bg-card: rgba(18, 28, 51, 0.85);
 
-  --accent: #00d4aa;
-  --accent-hover: #00e6bb;
-  --accent-dim: rgba(0, 212, 170, 0.15);
-  --accent-glow: 0 0 20px rgba(0, 212, 170, 0.12);
+  --accent: #0891b2;
+  --accent-hover: #06b6d4;
+  --accent-dim: rgba(8, 145, 178, 0.15);
+  --accent-glow: 0 0 20px rgba(8, 145, 178, 0.2);
 
   --online: #22c55e;
-  --offline: #6b7280;
+  --offline: #475569;
   --warning: #f59e0b;
   --danger: #ef4444;
 
-  --text-primary: #f1f5f9;
+  --text-primary: #ffffff;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-muted: #475569;
 
   --border: rgba(255, 255, 255, 0.06);
-  --border-accent: rgba(0, 212, 170, 0.3);
+  --border-accent: rgba(8, 145, 178, 0.3);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -41,27 +41,27 @@
 
 /* ── Design Tokens — Light ───────────────────────────────────── */
 [data-theme="light"] {
-  --bg-primary: #f0f4f8;
+  --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
-  --bg-elevated: #e8edf5;
+  --bg-elevated: #f1f5f9;
   --bg-card: rgba(255, 255, 255, 0.92);
 
-  --accent: #009e80;
-  --accent-hover: #00b894;
-  --accent-dim: rgba(0, 158, 128, 0.12);
-  --accent-glow: 0 0 20px rgba(0, 158, 128, 0.15);
+  --accent: #1e3a8a;
+  --accent-hover: #1e40af;
+  --accent-dim: rgba(30, 58, 138, 0.12);
+  --accent-glow: 0 0 20px rgba(30, 58, 138, 0.15);
 
   --online: #16a34a;
-  --offline: #9ca3af;
+  --offline: #64748b;
   --warning: #d97706;
   --danger: #dc2626;
 
-  --text-primary: #0f172a;
+  --text-primary: #1e3a8a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
 
-  --border: rgba(15, 23, 42, 0.08);
-  --border-accent: rgba(0, 158, 128, 0.3);
+  --border: rgba(30, 58, 138, 0.08);
+  --border-accent: rgba(8, 145, 178, 0.3);
 }
 
 
@@ -83,7 +83,7 @@ body,
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'CelebriSans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
@@ -93,7 +93,7 @@ body {
 }
 
 :root[dir="rtl"] body {
-  font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'CelebriSans', 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: 0;
 }
 
@@ -208,7 +208,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   font-family: inherit;
   cursor: pointer;
   border: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
@@ -219,12 +219,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .sx-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--accent-glow), 0 6px 16px rgba(0, 212, 170, 0.35);
+  transform: translateY(-1px);
+  box-shadow: var(--accent-glow), 0 4px 12px rgba(0, 212, 170, 0.3);
 }
 
 .sx-btn-primary:active {
-  transform: scale(0.97);
+  transform: translateY(0);
 }
 
 .sx-btn-primary:disabled {
@@ -241,19 +241,14 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .sx-btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.15);
-  transform: translateY(-1px);
-}
-
-.sx-btn-ghost:active {
-  transform: scale(0.97);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .sx-btn-sm {
-  padding: 8px 16px;
-  font-size: 13px;
+  padding: 6px 12px;
+  font-size: 12px;
   border-radius: var(--radius-sm);
 }
 
@@ -266,62 +261,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .sx-btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
-  transform: translateY(-1px);
-}
-
-.sx-btn-icon:active {
-  transform: scale(0.92);
-}
-
-.sx-btn-outline {
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-}
-
-.sx-btn-outline:hover {
-  background: var(--accent-dim);
-  transform: translateY(-1px);
-}
-
-.sx-btn-outline:active {
-  transform: scale(0.97);
-}
-
-/* ── Device List Item ──────────────────────────────────────────── */
-.device-item-btn {
-  display: block;
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  font-family: inherit;
-  color: inherit;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 4px;
-}
-
-.device-item-btn:hover {
-  background: var(--bg-primary);
-  transform: translateY(-1px);
-}
-
-.device-item-btn:active {
-  transform: scale(0.98);
-}
-
-.device-item-btn.selected {
-  border: 1px solid var(--border-accent);
-  background: var(--accent-dim);
-}
-
-.device-item-btn.selected:hover {
-  background: var(--accent-dim);
 }
 
 /* ── Status Badges ─────────────────────────────────────────────── */

@@ -1,0 +1,19 @@
+Login: OK (token received)
+
+=== DEVICES (1) ===
+  Device 1:
+    Name:   PB704-87828
+    IMEI:   780901703187828
+    Status: NORMAL
+    Model:  N/A
+    All fields: {"imei":"780901703187828","deviceName":"PB704-87828","mcType":"PB704","mcTypeUseScope":"personal","sim":null,"expiration":"2026-12-01 11:56:06","activationTime":"2025-12-01 11:56:06","reMark":null,"vehicleName":null,"vehicleIcon":"automobile","vehicleNumber":null,"vehicleModels":null,"carFrame":null,"driverName":null,"driverPhone":null,"enabledFlag":1,"engineNumber":null,"status":"NORMAL","deviceGroupId":"804cfa957e6c408cb606ca501ac62adf","deviceGroup":"Default group"}
+
+=== LIVE LOCATIONS (1) ===
+  Device 1:
+    IMEI:      780901703187828
+    Lat/Lng:   24.81643, 46.654064
+    Speed:     null km/h
+    GPS Time:  2026-02-21 06:55:13
+    Status:    0
+    Online:    N/A
+    All fields: {"imei":"780901703187828","deviceName":"PB704-87828","mcType":"PB704","icon":"automobile","status":"0","posType":"BEACON","lat":24.81643,"lng":46.654064,"hbTime":null,"accStatus":"0","gpsSignal":null,"powerValue":null,"batteryPowerVal":"70.00","speed":null,"gpsNum":null,"gpsTime":"2026-02-21 06:55:13","direction":null,"activationFlag":"1","expireFlag":"1","electQuantity":null,"locDesc":null,"distance":null,"temperature":null,"trackerOil":null,"trackerOils":null,"currentMileage":"","account":null,"customerName":null,"state":null,"stateTime":null,"iccid":null,"mac":null,"chargeStatus":null,"shutdown":null,"confidence":3}

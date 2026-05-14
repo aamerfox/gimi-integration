@@ -1,0 +1,31 @@
+=== GIMI API Integration Test ===
+Time: 2026-02-21T06:54:46.516Z
+APP_KEY: 8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558
+APP_KEY length: 48
+APP_SECRET: d1bf0654370a4a148abacd02abe8146e
+Timestamp: 2026-02-21 09:54:46
+
+--- Test 1: GET /route/rest ---
+  HTTP 200
+  Response: {"code":1001,"message":"缺少AppKey参数或无效的AppKey"}
+
+--- Test 2: POST /route/rest ---
+  HTTP 200
+  Response: {"code":1001,"message":"缺少AppKey参数或无效的AppKey"}
+
+--- Test 3: HTTPS GET ---
+  HTTP 200
+  Response: {"code":1001,"message":"缺少AppKey参数或无效的AppKey"}
+
+=== SUMMARY ===
+Test 1 (GET):  code=1001, message=缺少AppKey参数或无效的AppKey
+Test 2 (POST): code=1001, message=缺少AppKey参数或无效的AppKey
+Test 3 (HTTPS): code=1001, message=缺少AppKey参数或无效的AppKey
+
+=== DIAGNOSIS ===
+All attempts returned code 1001 (Invalid AppKey).
+This means the APP_KEY is not recognized by the GIMI platform.
+Possible solutions:
+  1. Verify the APP_KEY is correct (no extra/missing characters)
+  2. Check if the app is activated on the GIMI developer portal
+  3. Contact GIMI support to verify the app credentials

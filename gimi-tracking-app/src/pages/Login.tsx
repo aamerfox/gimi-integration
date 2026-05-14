@@ -6,7 +6,6 @@ import { gimiService } from '../services/gimi';
 import { useAuthStore } from '../store/auth';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
-import { mapApiErrorToKey } from '../lib/errorUtils';
 
 interface LoginResult {
     accessToken: string;
@@ -45,15 +44,12 @@ export default function Login() {
                     refreshToken: res.result.refreshToken,
                     expiresIn: res.result.expiresIn,
                     userId: account,
-                    passwordMd5: passwordMd5,
                     appKey: APP_KEY,
                 });
                 navigate('/');
             }
         } catch (err: unknown) {
-            const errorMsg = err instanceof Error ? err.message : t('auth.loginFailed');
-            const translationKey = mapApiErrorToKey(errorMsg);
-            setError(translationKey ? t(translationKey) : errorMsg);
+            setError(err instanceof Error ? err.message : t('auth.loginFailed'));
         } finally {
             setLoading(false);
         }
@@ -81,7 +77,7 @@ export default function Login() {
                     width: '500px',
                     height: '500px',
                     borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(0,212,170,0.08) 0%, transparent 70%)',
+                    background: 'radial-gradient(circle, rgba(8,145,178,0.08) 0%, transparent 70%)',
                     top: '-100px',
                     right: '-100px',
                     animation: 'float-blob 20s ease-in-out infinite',
@@ -91,7 +87,7 @@ export default function Login() {
                     width: '400px',
                     height: '400px',
                     borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(0,184,148,0.06) 0%, transparent 70%)',
+                    background: 'radial-gradient(circle, rgba(30,58,138,0.06) 0%, transparent 70%)',
                     bottom: '-80px',
                     left: '-80px',
                     animation: 'float-blob 25s ease-in-out infinite reverse',
@@ -101,7 +97,7 @@ export default function Login() {
                     width: '300px',
                     height: '300px',
                     borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(0,212,170,0.04) 0%, transparent 70%)',
+                    background: 'radial-gradient(circle, rgba(8,145,178,0.04) 0%, transparent 70%)',
                     top: '40%',
                     left: '50%',
                     animation: 'float-blob 18s ease-in-out infinite',
@@ -131,26 +127,24 @@ export default function Login() {
                         width: 56,
                         height: 56,
                         borderRadius: '16px',
-                        background: 'linear-gradient(135deg, var(--accent), #00b894)',
+                        background: 'linear-gradient(135deg, #1e3a8a, #0891b2)',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginBottom: '16px',
                         boxShadow: 'var(--accent-glow)',
                     }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="#0a0e1a" stroke="none">
-                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                        </svg>
+                        <span dir="ltr" style={{ color: '#fff', fontSize: '20px', fontWeight: 800, letterSpacing: '-0.03em' }}>t+</span>
                     </div>
-                    <h1 style={{
+                    <h1 dir="ltr" style={{
                         fontSize: '24px',
                         fontWeight: 700,
                         letterSpacing: '-0.03em',
                         marginBottom: '4px',
                     }}>
-                        Saudi<span style={{ color: 'var(--accent)' }}>Ex</span>
+                        trace<span style={{ color: '#0891b2' }}>+</span>
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                    <p dir="ltr" style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
                         {t('auth.subtitle')}
                     </p>
                 </div>
@@ -219,7 +213,7 @@ export default function Login() {
 
                 {/* Footer */}
                 <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px', marginTop: '24px', direction: 'ltr' }}>
-                    Powered by SaudiEx
+                    Powered by trace+
                 </p>
             </form>
         </div>
