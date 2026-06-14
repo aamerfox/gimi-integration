@@ -3,10 +3,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useDeviceStore } from '../store/devices';
 import type { Device } from '../store/devices';
+import { formatGimiTime } from '../utils/time';
 
 export interface LiveMapHandle {
     zoomIn: () => void;
     zoomOut: () => void;
+    centerOnDevice: (lat: number, lng: number) => void;
 }
 
 const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
@@ -85,7 +87,8 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
             layers: [streetLayer] // Default to street
         });
 
-        L.control.layers(baseMaps, undefined, { position: 'topleft' }).addTo(map);
+        const isRtl = document.documentElement.dir === 'rtl';
+        L.control.layers(baseMaps, undefined, { position: isRtl ? 'bottomleft' : 'bottomright' }).addTo(map);
         mapRef.current = map;
 
         const resizeObserver = new ResizeObserver(() => {
@@ -145,7 +148,7 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
                             <span style="font-size:12px;color:${isOnline ? '#22c55e' : '#6b7280'}">${isOnline ? 'Online' : 'Offline'}</span>
                         </div>
                         <div style="font-size:12px;color:#94a3b8">${(device.lat || 0).toFixed(5)}, ${(device.lng || 0).toFixed(5)}</div>
-                        ${device.gpsTime ? `<div style="font-size:11px;color:#64748b;margin-top:4px">${device.gpsTime}</div>` : ''}
+                        ${device.gpsTime ? `<div style="font-size:11px;color:#64748b;margin-top:4px">${formatGimiTime(device.gpsTime)}</div>` : ''}
                     </div>
                 `;
                 marker.bindPopup(popupContent);
@@ -167,6 +170,9 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
     useImperativeHandle(ref, () => ({
         zoomIn: () => mapRef.current?.zoomIn(),
         zoomOut: () => mapRef.current?.zoomOut(),
+        centerOnDevice: (lat: number, lng: number) => {
+            mapRef.current?.flyTo([lat, lng], 15, { duration: 1 });
+        }
     }));
 
     return (

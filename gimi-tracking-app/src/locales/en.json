@@ -11,7 +11,9 @@
         "refresh": "Refresh",
         "noData": "No data available",
         "selectDevice": "Select a device",
-        "connecting": "Connecting..."
+        "connecting": "Connecting...",
+        "minimize": "Minimize",
+        "maximize": "Maximize"
     },
     "nav": {
         "dashboard": "Dashboard",
@@ -77,7 +79,8 @@
         "passwordPlaceholder": "Enter your password",
         "signIn": "Sign In",
         "signingIn": "Signing in...",
-        "loginFailed": "Login failed"
+        "loginFailed": "Login failed",
+        "logout": "Log Out"
     },
     "share": {
         "title": "Share Link",
@@ -94,5 +97,73 @@
         "expired": "Expired",
         "invalidLink": "This link is invalid or has expired.",
         "linkInactive": "Link Inactive"
+    },
+    "deviceDetails": {
+        "address": "Address",
+        "noAddress": "No address description available",
+        "coordinates": "Coordinates",
+        "gnss": "GNSS",
+        "lastFix": "Last fix",
+        "todaysActivity": "Today's Activity",
+        "todaysMileage": "Today's mileage",
+        "batteryStrength": "Internal battery strength",
+        "live": "Live",
+        "tracks": "Tracks",
+        "share": "Share",
+        "speed": "Speed"
+    },
+    "reports": {
+        "title": "Reports & Analytics",
+        "device": "Device",
+        "allDevices": "All Devices",
+        "startDate": "Start Date & Time",
+        "endDate": "End Date & Time",
+        "type": "Report Type",
+        "generate": "Generate Report",
+        "export": "Export to CSV",
+        "stats": {
+            "totalDistance": "Total Distance",
+            "totalStops": "Total Stops",
+            "stopDuration": "Total Stop Duration",
+            "totalAlarms": "Total Alarms",
+            "avgSpeed": "Average Speed",
+            "maxSpeed": "Max Speed"
+        },
+        "types": {
+            "trips": "Trips & Mileage",
+            "parking": "Parking & Stops",
+            "alarms": "Device Alarms"
+        },
+        "table": {
+            "time": "Time",
+            "startTime": "Start Time",
+            "endTime": "End Time",
+            "device": "Device Name",
+            "details": "Details",
+            "mileage": "Mileage",
+            "duration": "Duration",
+            "type": "Alarm Type",
+            "speed": "Speed",
+            "location": "Location"
+        },
+        "noData": "No data found for the selected filters.",
+        "loading": "Generating report from Tracksolid API...",
+        "filters": {
+            "accType": "Ignition Status (ACC)",
+            "accOn": "ACC ON (Running)",
+            "accOff": "ACC OFF (Stopped/Idle)",
+            "accAll": "All Stops",
+            "minStopDuration": "Min Stop Duration",
+            "minTripDistance": "Min Trip Distance",
+            "alarmType": "Alarm Category",
+            "allAlarms": "All Alarms"
+        }
+    },
+    "geofence": {
+        "title": "Geofences",
+        "create": "Create Geofence",
+        "delete": "Delete Geofence",
+        "radius": "Radius",
+        "name": "Geofence Name"
     }
 }

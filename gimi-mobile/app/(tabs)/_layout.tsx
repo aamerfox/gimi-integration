@@ -1,0 +1,96 @@
+import { Tabs } from 'expo-router';
+import { useThemeStore } from '@/store/theme';
+import COLORS from '@/constants/Colors';
+import { useTranslation } from 'react-i18next';
+import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocationPolling } from '@/hooks/useLocationPolling';
+import { useGeofenceDetection } from '@/hooks/useGeofenceDetection';
+import { useGeofenceEventStore } from '@/store/geofenceEvents';
+import { useAlarmStateStore } from '@/store/alarmState';
+
+export default function TabLayout() {
+  const { theme } = useThemeStore();
+  const { t } = useTranslation();
+  const C = COLORS[theme];
+  const insets = useSafeAreaInsets();
+
+  // Run global coordinate polling
+  useLocationPolling();
+
+  // Run global client-side geofence boundary detection
+  useGeofenceDetection();
+
+  const { unreadCount: geofenceUnread } = useGeofenceEventStore();
+  const { unreadCount: alarmUnread } = useAlarmStateStore();
+  const totalUnread = geofenceUnread + alarmUnread;
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: C.accent,
+        tabBarInactiveTintColor: C.textSecondary,
+        tabBarStyle: {
+          backgroundColor: C.tabBar,
+          borderTopColor: C.tabBarBorder,
+          borderTopWidth: 1,
+          paddingBottom: 6 + insets.bottom,
+          paddingTop: 6,
+          height: 62 + insets.bottom,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 2,
+        },
+        headerStyle: { backgroundColor: C.bgSecondary },
+        headerTintColor: C.textPrimary,
+        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+        headerShadowVisible: false,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: t('tabs.map'),
+          tabBarIcon: ({ color, size }) => <Feather name="map" size={size || 24} color={color} />,
+          headerTitle: t('tabs.map'),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: t('tabs.history'),
+          tabBarIcon: ({ color, size }) => <Feather name="clock" size={size || 24} color={color} />,
+          headerTitle: t('tabs.history'),
+        }}
+      />
+      <Tabs.Screen
+        name="geofences"
+        options={{
+          title: t('tabs.geofences'),
+          tabBarIcon: ({ color, size }) => <Feather name="hexagon" size={size || 24} color={color} />,
+          headerTitle: t('tabs.geofences'),
+        }}
+      />
+      <Tabs.Screen
+        name="alerts"
+        options={{
+          title: t('tabs.alerts'),
+          tabBarIcon: ({ color, size }) => <Feather name="bell" size={size || 24} color={color} />,
+          headerTitle: t('tabs.alerts'),
+          tabBarBadge: totalUnread > 0 ? (totalUnread > 99 ? '99+' : totalUnread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#ef4444', color: '#fff', fontSize: 10, fontWeight: '700' },
+        }}
+      />
+      <Tabs.Screen
+        name="share"
+        options={{
+          title: t('tabs.share'),
+          tabBarIcon: ({ color, size }) => <Feather name="share-2" size={size || 24} color={color} />,
+          headerTitle: t('tabs.share'),
+        }}
+      />
+    </Tabs>
+  );
+}

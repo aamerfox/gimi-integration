@@ -32,7 +32,7 @@ test.describe('Share Management', () => {
         await expect(header).toBeVisible({ timeout: 10000 });
     });
 
-    test.fixme('can generate a share link', async ({ page }) => {
+    test.fixme('can generate a share link', async () => {
         // Brittle due to API mocking requirements
     });
 });

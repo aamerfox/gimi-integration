@@ -4,6 +4,8 @@ import { useGroupStore } from '../store/groups';
 import type { Device } from '../store/devices';
 import { ChevronRight, ChevronDown, MoreVertical, Plus, Trash2, Edit2, FolderInput } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useSimulationStore } from '../store/simulation';
+import { useAuthStore } from '../store/auth';
 
 interface DevicePanelProps {
     onDeviceSelect?: () => void;
@@ -14,6 +16,8 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
     const { groups, deviceGroupMap, addGroup, removeGroup, assignDeviceToGroup, renameGroup } = useGroupStore();
     const [search, setSearch] = useState('');
     const { t } = useTranslation();
+    const { isSimulatedOperator, addLog } = useSimulationStore();
+    const { userId } = useAuthStore();
 
     // Group UI states
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ default: true });
@@ -81,6 +85,20 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
             removeGroup(id);
         }
         setGroupMenuOpenFor(null);
+    };
+
+    const handleRenameDevice = (device: Device) => {
+        const currentUserId = userId || 'admin';
+        if (isSimulatedOperator) {
+            addLog('Rename Device', currentUserId, 'Failed', 'Permission Denied');
+            alert('Error: Permission Denied. Read-only operators cannot rename devices.');
+            return;
+        }
+        const name = prompt('Enter new name for device:', device.deviceName);
+        if (name && name.trim()) {
+            useDeviceStore.getState().updateDeviceName(device.imei, name.trim());
+            addLog('Rename Device', currentUserId, 'Success', `Renamed device ${device.imei} to ${name.trim()}`);
+        }
     };
 
     return (
@@ -194,6 +212,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                         setGroupMenuOpenFor={setGroupMenuOpenFor}
                         handleRenameGroup={handleRenameGroup}
                         handleDeleteGroup={handleDeleteGroup}
+                        handleRenameDevice={handleRenameDevice}
                         menuRef={menuRef}
                     />
                 ))}
@@ -216,6 +235,7 @@ export default function DevicePanel({ onDeviceSelect }: DevicePanelProps = {}) {
                     setGroupMenuOpenFor={setGroupMenuOpenFor}
                     handleRenameGroup={() => { }}
                     handleDeleteGroup={() => { }}
+                    handleRenameDevice={handleRenameDevice}
                     menuRef={menuRef}
                 />
             </div>
@@ -244,12 +264,13 @@ interface GroupSectionProps {
     setGroupMenuOpenFor: (id: string | null) => void;
     handleRenameGroup: (id: string) => void;
     handleDeleteGroup: (id: string) => void;
+    handleRenameDevice: (device: Device) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     menuRef: any;
 }
 
 function GroupSection({
-    id, name, devices, isExpanded, onToggle, groups, selectedDevice, selectDevice, onDeviceSelect, assignDeviceToGroup, menuOpenFor, setMenuOpenFor, groupMenuOpenFor, setGroupMenuOpenFor, handleRenameGroup, handleDeleteGroup, menuRef
+    id, name, devices, isExpanded, onToggle, groups, selectedDevice, selectDevice, onDeviceSelect, assignDeviceToGroup, menuOpenFor, setMenuOpenFor, groupMenuOpenFor, setGroupMenuOpenFor, handleRenameGroup, handleDeleteGroup, handleRenameDevice, menuRef
 }: GroupSectionProps) {
     const isDefault = id === 'default';
 
@@ -339,6 +360,10 @@ function GroupSection({
                                 assignDeviceToGroup(device.imei, gid);
                                 setMenuOpenFor(null);
                             }}
+                            onRename={() => {
+                                handleRenameDevice(device);
+                                setMenuOpenFor(null);
+                            }}
                             menuRef={menuRef}
                         />
                     ))}
@@ -374,7 +399,7 @@ function GroupSection({
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, groups, currentGroupId, onAssign, menuRef }: any) {
+function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, groups, currentGroupId, onAssign, onRename, menuRef }: any) {
     const isOnline = device.status === '1' || device.posType === 'GPS';
     const batteryVal = parseFloat(String(device.batteryPowerVal || device.battery || '0'));
 
@@ -383,13 +408,15 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
             <button
                 onClick={onSelect}
                 style={{
-                    display: 'block',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
                     width: '100%',
                     padding: '12px',
                     borderRadius: '8px',
                     border: isSelected ? '1px solid var(--border-accent)' : '1px solid transparent',
                     background: isSelected ? 'var(--accent-dim)' : 'transparent',
-                    textAlign: 'left',
+                    textAlign: 'start',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
                     color: 'inherit',
@@ -403,41 +430,39 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
                     if (!isSelected) e.currentTarget.style.background = 'transparent';
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {/* Vehicle Icon */}
-                    <div style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: '50%',
-                        background: 'var(--accent)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                    }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-                            <circle cx="7" cy="17" r="2" />
-                            <path d="M9 17h6" />
-                            <circle cx="17" cy="17" r="2" />
-                        </svg>
-                    </div>
+                {/* Vehicle Icon */}
+                <div style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                        <circle cx="7" cy="17" r="2" />
+                        <path d="M9 17h6" />
+                        <circle cx="17" cy="17" r="2" />
+                    </svg>
+                </div>
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                {device.deviceName}
-                            </span>
-                            <div onClick={onMenuToggle} style={{ padding: '4px', cursor: 'pointer' }}>
-                                <MoreVertical size={16} color="var(--text-muted)" />
-                            </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {device.deviceName}
+                        </span>
+                        <div onClick={onMenuToggle} style={{ padding: '4px', cursor: 'pointer', flexShrink: 0 }}>
+                            <MoreVertical size={16} color="var(--text-muted)" />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                            <span style={{ fontSize: '11px', background: isOnline ? 'var(--online)' : 'var(--offline)', color: '#fff', padding: '2px 6px', borderRadius: '12px' }}>
-                                {batteryVal}%
-                            </span>
-                            <span style={{ color: 'var(--offline)', fontSize: '12px' }}>♥</span>
-                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                        <span style={{ fontSize: '11px', background: isOnline ? 'var(--online)' : 'var(--offline)', color: '#fff', padding: '2px 6px', borderRadius: '12px' }}>
+                            {batteryVal}%
+                        </span>
+                        <span style={{ color: 'var(--offline)', fontSize: '12px' }}>♥</span>
                     </div>
                 </div>
             </button>
@@ -456,6 +481,13 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
                     minWidth: '160px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                 }}>
+                    <div
+                        className="group-menu-item"
+                        onClick={(e) => { e.stopPropagation(); onRename(); }}
+                    >
+                        <Edit2 size={14} /> Rename device
+                    </div>
+                    <div style={{ borderBottom: '1px solid var(--border)', margin: '4px 0' }} />
                     <div style={{ fontSize: '11px', padding: '6px 8px', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
                         Move to group...
                     </div>

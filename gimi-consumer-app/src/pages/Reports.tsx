@@ -5,6 +5,17 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { useDeviceStore } from '@/store/devices';
 import BottomNav from '@/components/BottomNav';
 
+const HOURLY_MOCK_DATA = [
+  { hour: '0:00', value: 45 },
+  { hour: '3:00', value: 78 },
+  { hour: '6:00', value: 12 },
+  { hour: '9:00', value: 56 },
+  { hour: '12:00', value: 90 },
+  { hour: '15:00', value: 34 },
+  { hour: '18:00', value: 65 },
+  { hour: '21:00', value: 23 },
+];
+
 export default function Reports() {
   const navigate = useNavigate();
   const { devices } = useDeviceStore();
@@ -30,10 +41,7 @@ export default function Reports() {
     { key: 'hourly', label: 'النشاط الساعي' },
   ];
 
-  const hourlyData = Array.from({ length: 8 }, (_, i) => ({
-    hour: `${i * 3}:00`,
-    value: Math.round(Math.random() * 100),
-  }));
+
 
   return (
     <div className="app-shell">
@@ -86,7 +94,7 @@ export default function Reports() {
           {tabs.map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => setActiveTab(tab.key as 'ratio' | 'speed' | 'daily' | 'hourly')}
               style={{
                 flex: 1, padding: '8px 4px', fontSize: 11, borderRadius: 10,
                 border: 'none', fontFamily: 'inherit', fontWeight: 600,
@@ -130,7 +138,7 @@ export default function Reports() {
             <>
               <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>النشاط الساعي</h3>
               <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={hourlyData}>
+                <BarChart data={HOURLY_MOCK_DATA}>
                   <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
                   <YAxis hide />
                   <Tooltip />

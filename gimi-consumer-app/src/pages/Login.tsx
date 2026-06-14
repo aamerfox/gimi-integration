@@ -28,7 +28,7 @@ export default function Login() {
     if (!account || !password) { setError('يرجى ملء جميع الحقول'); return; }
     setLoading(true); setError('');
     try {
-      const res = (await gimiService.login(account, md5(password))) as any;
+      const res = (await gimiService.login(account, md5(password))) as unknown as { result?: { accessToken?: string } };
       if (res?.result?.accessToken) {
         login(res.result.accessToken, account);
         navigate('/');
@@ -51,19 +51,27 @@ export default function Login() {
       padding: 24, gap: 32,
     }}>
       {/* Logo */}
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: 24,
-          background: 'linear-gradient(135deg, var(--theme-accent), var(--theme-accent2))',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 16px',
-          boxShadow: '0 8px 32px color-mix(in srgb, var(--theme-accent) 35%, transparent)',
-          color: 'white', fontWeight: 900, fontSize: 36,
-        }} dir="ltr">t+</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-text)', marginBottom: 4 }} dir="ltr">
-          trace+
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--theme-muted)' }} dir="ltr">Connected. In Control.</p>
+      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <img
+          src="/logo-icon.png"
+          alt="trace+ icon"
+          className="brand-logo-icon"
+          style={{
+            width: 80,
+            height: 80,
+            objectFit: 'contain',
+            marginBottom: 12,
+          }}
+        />
+        <img
+          src="/logo-wordmark.png"
+          alt="trace+ logo"
+          className="brand-logo-wordmark"
+          style={{
+            height: 48,
+            objectFit: 'contain',
+          }}
+        />
       </div>
 
       {/* Card */}

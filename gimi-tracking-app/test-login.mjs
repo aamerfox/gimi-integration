@@ -6,9 +6,9 @@ import crypto from 'crypto';
 
 const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
 const APP_SECRET = 'd1bf0654370a4a148abacd02abe8146e';
-const BASE_URL = 'http://open.10000track.com/route/rest';
+const BASE_URL = 'https://eu-open.tracksolidpro.com/route/rest';
 
-const ACCOUNT = 'GBH2025';
+const ACCOUNT = 'saudiex';
 const PASSWORD_RAW = '4a026bcce174570b8b0411600017f2f2';
 
 function generateSignature(params) {
@@ -28,7 +28,7 @@ function generateSignature(params) {
 function getTimestamp() {
     const now = new Date();
     const pad = (n) => n < 10 ? `0${n}` : n;
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    return `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
 }
 
 async function testLogin(label, pwdMd5) {

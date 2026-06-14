@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-async function mockAuth(page: Page) {
+async function mockAuthAndApi(page: Page) {
     await page.addInitScript(() => {
         const fakeAuth = {
             state: {
@@ -16,11 +16,91 @@ async function mockAuth(page: Page) {
         };
         localStorage.setItem('gimi-auth-storage', JSON.stringify(fakeAuth));
     });
+
+    await page.route(/\/api(?:\?|$)/, async (route) => {
+        const url = route.request().url();
+        if (url.includes('jimi.user.device.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [
+                        {
+                            imei: '860301048898123',
+                            deviceName: 'SaudiEx-Truck-01',
+                            icon: 'automobile',
+                            status: '1',
+                            lat: 24.7136,
+                            lng: 46.6753,
+                            posType: 'GPS',
+                            batteryPowerVal: '92',
+                            gpsTime: '2026-06-06 17:00:00',
+                            locDesc: 'Riyadh, Saudi Arabia'
+                        }
+                    ]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.user.device.location.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [
+                        {
+                            imei: '860301048898123',
+                            lat: 24.7136,
+                            lng: 46.6753,
+                            posType: 'GPS',
+                            batteryPowerVal: '92',
+                            gpsTime: '2026-06-06 17:00:00',
+                            locDesc: 'Riyadh, Saudi Arabia'
+                        }
+                    ]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.open.platform.fence.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ code: 0, message: 'success', result: [] })
+            });
+            return;
+        }
+        if (url.includes('jimi.open.device.fence.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ code: 0, message: 'success', result: [] })
+            });
+            return;
+        }
+        if (url.includes('jimi.open.platform.fence.create')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ code: 0, message: 'success', result: { fence_id: 999 } })
+            });
+            return;
+        }
+        await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 0, message: 'Success', result: {} })
+        });
+    });
 }
 
 test.describe('Geofences Page', () => {
     test.beforeEach(async ({ page }) => {
-        await mockAuth(page);
+        await mockAuthAndApi(page);
         await page.goto('/geofences');
         await page.waitForLoadState('load');
         // Wait for any initial loading to finish

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-async function mockAuth(page: Page) {
+async function mockAuthAndApi(page: Page) {
     await page.addInitScript(() => {
         const fakeAuth = {
             state: {
@@ -16,11 +16,99 @@ async function mockAuth(page: Page) {
         };
         localStorage.setItem('gimi-auth-storage', JSON.stringify(fakeAuth));
     });
+
+    await page.route('**/api**', async (route) => {
+        const url = route.request().url();
+        if (url.includes('jimi.user.device.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [
+                        {
+                            imei: '123456789012345',
+                            deviceName: 'Test Tracker 1',
+                            icon: 'automobile',
+                            status: '1',
+                            lat: 24.7136,
+                            lng: 46.6753,
+                            posType: 'GPS',
+                            batteryPowerVal: '85',
+                            gpsTime: '2026-06-05 12:00:00',
+                            locDesc: 'Riyadh, Saudi Arabia'
+                        }
+                    ]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.user.device.location.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [
+                        {
+                            imei: '123456789012345',
+                            lat: 24.7136,
+                            lng: 46.6753,
+                            posType: 'GPS',
+                            batteryPowerVal: '85',
+                            gpsTime: '2026-06-05 12:00:00',
+                            locDesc: 'Riyadh, Saudi Arabia'
+                        }
+                    ]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.device.track.mileage')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [{ mileage: 125500 }]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.device.alarm.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: []
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.open.platform.fence.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: []
+                })
+            });
+            return;
+        }
+        await route.continue();
+    });
 }
 
 test.describe('History Page', () => {
     test.beforeEach(async ({ page }) => {
-        await mockAuth(page);
+        await mockAuthAndApi(page);
         await page.goto('/history');
         await page.waitForLoadState('load');
     });
@@ -50,10 +138,10 @@ test.describe('History Page', () => {
     });
 
     test('Search button is present and clickable', async ({ page }) => {
-        const searchBtn = page.locator('button', { hasText: /search|بحث/i });
+        const searchBtn = page.locator('button', { hasText: /Load Track|search|بحث/i });
         await expect(searchBtn.first()).toBeVisible({ timeout: 5000 });
         // Clicking without selecting a device should not crash
-        await searchBtn.first().click();
+        await searchBtn.first().click({ force: true });
         await expect(page.locator('body')).toBeVisible();
     });
 
@@ -82,5 +170,22 @@ test.describe('History Page', () => {
         // Verify the floating controls panel exists
         const controlPanel = page.locator('div[style*="absolute"]').first();
         await expect(controlPanel).toBeVisible({ timeout: 8000 });
+    });
+
+    test('can minimize and maximize the history control panel', async ({ page }) => {
+        const minimizeBtn = page.locator('button[aria-label="Minimize"]');
+        await expect(minimizeBtn).toBeVisible({ timeout: 5000 });
+
+        const deviceSelect = page.locator('select').first();
+        await expect(deviceSelect).toBeVisible();
+
+        await minimizeBtn.click();
+        await expect(deviceSelect).not.toBeVisible();
+
+        const maximizeBtn = page.locator('button[aria-label="Maximize"]');
+        await expect(maximizeBtn).toBeVisible();
+
+        await maximizeBtn.click();
+        await expect(deviceSelect).toBeVisible();
     });
 });

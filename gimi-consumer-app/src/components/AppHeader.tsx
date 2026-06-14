@@ -55,15 +55,16 @@ export default function AppHeader({ title = 'تريس+', subtitle = 'trace+ Trac
         </div>
       </div>
 
-      <div dir="ltr" style={{
-        width: 44, height: 44, borderRadius: 14,
-        background: 'linear-gradient(135deg, var(--theme-accent), var(--theme-accent2))',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: 'white', fontWeight: 800, fontSize: 18,
-        boxShadow: '0 2px 12px color-mix(in srgb, var(--theme-accent) 30%, transparent)',
-      }}>
-        t+
-      </div>
+      <img
+        src="/logo-icon.png"
+        alt="trace+ icon"
+        className="brand-logo-icon"
+        style={{
+          width: 44,
+          height: 44,
+          objectFit: 'contain',
+        }}
+      />
     </header>
   );
 }

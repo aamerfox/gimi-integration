@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ChevronLeft, Bell, Moon, Users, ChevronRight, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore, type Theme } from '@/store/app';
@@ -20,16 +21,22 @@ export default function SettingsPage() {
   const { logout } = useAuthStore();
   const { t } = useTranslation();
 
+  useEffect(() => {
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme === 'default' ? '' : theme);
+  }, [theme]);
+
   const handleLangSwitch = (newLang: 'ar' | 'en') => {
     setLang(newLang);
     i18n.changeLanguage(newLang);
-    document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = newLang;
   };
 
   const handleTheme = (t: Theme) => {
     setTheme(t);
-    document.documentElement.setAttribute('data-theme', t === 'default' ? '' : t);
   };
 
   return (
@@ -97,13 +104,13 @@ export default function SettingsPage() {
               style={{
                 flex: 1, padding: '10px', borderRadius: 12, border: '1.5px solid',
                 borderColor: lang === l ? 'var(--theme-accent)' : 'transparent',
-                background: lang === l ? 'color-mix(in srgb, var(--theme-accent) 10%, transparent)' : 'rgba(255,255,255,0.5)',
+                background: lang === l ? 'color-mix(in srgb, var(--theme-accent) 10%, transparent)' : 'color-mix(in srgb, var(--theme-text) 5%, transparent)',
                 fontFamily: 'inherit', fontWeight: 600, fontSize: 13, cursor: 'pointer',
                 color: lang === l ? 'var(--theme-accent)' : 'var(--theme-muted)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
             >
-              {l === 'ar' ? '🇸🇦 العربية' : '🇺🇸 الإنجليزية'}
+              {l === 'ar' ? '🇸🇦 العربية' : '🇺🇸 English'}
               {lang === l && <span style={{ color: 'var(--theme-accent)' }}>✓</span>}
             </button>
           ))}
@@ -141,7 +148,7 @@ export default function SettingsPage() {
               <div style={{ height: 64, background: t.gradient }} />
               <div style={{
                 padding: '6px', fontSize: 11, fontFamily: 'inherit', fontWeight: 600,
-                background: 'rgba(255,255,255,0.8)', color: 'var(--theme-text)',
+                background: 'var(--theme-card)', color: 'var(--theme-text)',
               }}>
                 {t.labelAr}
               </div>
@@ -163,7 +170,7 @@ export default function SettingsPage() {
           onClick={() => { logout(); navigate('/login'); }}
           style={{
             width: '100%', padding: '14px', border: 'none', borderRadius: 14,
-            background: '#fef2f2', color: '#dc2626',
+            background: 'color-mix(in srgb, #dc2626 12%, transparent)', color: '#dc2626',
             fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             marginBottom: 20,
@@ -184,7 +191,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       onClick={() => onChange(!value)}
       style={{
         width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
-        background: value ? 'var(--theme-accent)' : '#e2e8f0',
+        background: value ? 'var(--theme-accent)' : 'var(--theme-card-border)',
         position: 'relative', transition: 'background 0.2s', flexShrink: 0,
       }}
     >

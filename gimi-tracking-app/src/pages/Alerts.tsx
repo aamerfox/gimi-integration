@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useDeviceStore } from '../store/devices';
 import type { Device } from '../store/devices';
@@ -9,6 +9,7 @@ import { useAlertRuleStore } from '../store/alertRules';
 import type { AlertRuleType } from '../store/alertRules';
 import { useGeofenceStore } from '../store/geofences';
 import { useTranslation } from 'react-i18next';
+import { formatGimiTime, getLocalIsoString, formatToUtcApiTime } from '../utils/time';
 
 interface RawAlarm {
     alarmId?: string;
@@ -85,13 +86,35 @@ export default function Alerts() {
     const { devices } = useDeviceStore();
     const { events: geofenceEvents, markAllRead, clearEvents } = useGeofenceEventStore();
     const { rules, addRule, removeRule, toggleRule } = useAlertRuleStore();
-    const { geofences } = useGeofenceStore();
+    const { 
+        geofences: localGeofences, 
+        apiGeofences, 
+        fetchApiGeofences 
+    } = useGeofenceStore();
+
+    // Combine local geofences and API geofences
+    const combinedGeofences = [
+        ...apiGeofences,
+        ...localGeofences.map(g => ({ ...g, isLocal: true }))
+    ];
+
     const [alarms, setAlarms] = useState<Alarm[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState('all');
     const isMobile = useIsMobile();
     const { t } = useTranslation();
+
+    // Fetch API geofences on mount or when devices load
+    const fetchedRef = useRef(false);
+    useEffect(() => {
+        if (!fetchedRef.current || (devices.length > 0 && !fetchedRef.current)) {
+            fetchApiGeofences();
+            if (devices.length > 0) {
+                fetchedRef.current = true;
+            }
+        }
+    }, [fetchApiGeofences, devices.length]);
 
     const FILTERS = [
         { key: 'all', label: t('alertsFilters.all') },
@@ -110,7 +133,7 @@ export default function Alerts() {
     const handleAddRule = () => {
         if (!ruleName.trim()) return;
         const device = devices.find((d: Device) => d.imei === ruleImei);
-        const fence = geofences.find(f => f.id === ruleFenceId);
+        const fence = combinedGeofences.find(f => f.id === ruleFenceId);
         addRule({
             name: ruleName.trim(),
             type: ruleType,
@@ -141,21 +164,18 @@ export default function Alerts() {
     // Date range pickers
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const formatDate = (d: Date) => d.toISOString().slice(0, 16);
+    const formatDate = (d: Date) => getLocalIsoString(d);
     const [startDate, setStartDate] = useState(formatDate(sevenDaysAgo));
     const [endDate, setEndDate] = useState(formatDate(now));
     const [selectedImei, setSelectedImei] = useState('');
-
-    // Format for API: "YYYY-MM-DD HH:mm:ss"
-    const toApiDate = (d: string) => d.replace('T', ' ') + ':00';
 
     const fetchAlarms = useCallback(async () => {
         if (!accessToken || !userId) return;
         setIsLoading(true);
         setError(null);
         try {
-            const begin = toApiDate(startDate);
-            const end = toApiDate(endDate);
+            const begin = formatToUtcApiTime(startDate);
+            const end = formatToUtcApiTime(endDate);
             let allAlarms: RawAlarm[] = [];
 
             if (selectedImei) {
@@ -328,7 +348,7 @@ export default function Alerts() {
                                 <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Geofence Zone</label>
                                 <select className="sx-select" value={ruleFenceId} onChange={e => setRuleFenceId(e.target.value)} style={{ width: '100%', padding: '8px 12px', fontSize: '13px' }}>
                                     <option value="">Any Geofence</option>
-                                    {geofences.map(f => (
+                                    {combinedGeofences.map(f => (
                                         <option key={f.id} value={f.id}>{f.fenceName}</option>
                                     ))}
                                 </select>
@@ -652,7 +672,7 @@ export default function Alerts() {
                                         </div>
                                         <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                                             {alarm.speed > 0 && <span>🚗 {alarm.speed} km/h</span>}
-                                            <span>🕐 {alarm.gpsTime}</span>
+                                            <span>🕐 {formatGimiTime(alarm.gpsTime)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -694,7 +714,7 @@ export default function Alerts() {
                                     <div style={{ fontSize: '12px', fontWeight: 500 }}>
                                         {alarm.speed > 0 ? `${alarm.speed} km/h` : '—'}
                                     </div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{alarm.gpsTime}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{formatGimiTime(alarm.gpsTime)}</div>
                                 </div>
                             );
                         })}

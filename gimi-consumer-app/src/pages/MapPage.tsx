@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import BottomNav from '@/components/BottomNav';
 
 // Fix Leaflet default icon
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
@@ -35,7 +35,7 @@ function createDeviceIcon(isOnline: boolean) {
 export default function MapPage() {
   const { devices, selectedDevice, setSelectedDevice } = useDeviceStore();
   const navigate = useNavigate();
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
   const validDevices = devices.filter(d => d.lat && d.lng);
   const center: [number, number] = selectedDevice?.lat && selectedDevice?.lng
@@ -45,8 +45,8 @@ export default function MapPage() {
     : [24.7136, 46.6753];
 
   useEffect(() => {
-    if (selectedDevice?.lat && mapRef.current) {
-      mapRef.current.flyTo([selectedDevice.lat, selectedDevice.lng], 15, { animate: true, duration: 1 });
+    if (selectedDevice?.lat && selectedDevice?.lng && mapRef.current) {
+      mapRef.current.flyTo([selectedDevice.lat!, selectedDevice.lng!], 15, { animate: true, duration: 1 });
     }
   }, [selectedDevice]);
 

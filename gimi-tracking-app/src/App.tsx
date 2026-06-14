@@ -11,6 +11,9 @@ import { useThemeStore } from '@/store/theme';
 import { useLanguageStore } from '@/store/languageStore';
 import ViewShare from '@/pages/ViewShare';
 import ShareManage from '@/pages/ShareManage';
+import Settings from '@/pages/Settings';
+import Devices from '@/pages/Devices';
+import ReportsPage from '@/pages/Reports';
 import './i18n'; // Initialize i18n
 
 function App() {
@@ -42,6 +45,9 @@ function App() {
             <Route path="/geofences" element={<GeofencesPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/share-manage" element={<ShareManage />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/devices" element={<Devices />} />
+            <Route path="/reports" element={<ReportsPage />} />
           </Route>
         </Route>
 

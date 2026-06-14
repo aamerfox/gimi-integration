@@ -1,0 +1,13 @@
+.gcloudignore
+.git
+.gitignore
+node_modules/
+dist/
+playwright-report/
+test-results/
+.github/
+.vscode/
+*.log
+*.txt
+android/
+ios/

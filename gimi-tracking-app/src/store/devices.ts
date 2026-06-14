@@ -16,6 +16,7 @@ export interface Device {
     battery?: number;
     batteryPowerVal?: string;  // API battery percentage as string
     accStatus?: string;
+    locDesc?: string | null;
 }
 
 interface DeviceState {
@@ -27,6 +28,7 @@ interface DeviceState {
     setDevices: (devices: Device[]) => void;
     selectDevice: (device: Device | null) => void;
     updateDeviceLocations: (locations: Partial<Device>[]) => void;
+    updateDeviceName: (imei: string, name: string) => void;
     setLoading: (loading: boolean) => void;
     setError: (error: string | null) => void;
 }
@@ -61,6 +63,17 @@ export const useDeviceStore = create<DeviceState>()((set, get) => ({
         const { selectedDevice } = get();
         if (selectedDevice) {
             const updatedSelected = updated.find((d) => d.imei === selectedDevice.imei);
+            if (updatedSelected) set({ selectedDevice: updatedSelected });
+        }
+    },
+
+    updateDeviceName: (imei, name) => {
+        const { devices, selectedDevice } = get();
+        const updated = devices.map((d) => (d.imei === imei ? { ...d, deviceName: name } : d));
+        set({ devices: updated });
+
+        if (selectedDevice && selectedDevice.imei === imei) {
+            const updatedSelected = updated.find((d) => d.imei === imei);
             if (updatedSelected) set({ selectedDevice: updatedSelected });
         }
     },

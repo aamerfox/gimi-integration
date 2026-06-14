@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useDeviceStore } from '../store/devices';
 import type { Device } from '../store/devices';
 import { useGeofenceStore } from '../store/geofences';
@@ -46,7 +46,11 @@ function sendNotification(title: string, body: string) {
  */
 export function useGeofenceDetection() {
     const { devices } = useDeviceStore();
-    const { geofences } = useGeofenceStore();
+    const { geofences: localGeofences, apiGeofences } = useGeofenceStore();
+    const geofences = useMemo(() => [
+        ...apiGeofences,
+        ...localGeofences.map(g => ({ ...g, isLocal: true }))
+    ], [apiGeofences, localGeofences]);
     const { addEvent } = useGeofenceEventStore();
 
     // Map<imei, Set<fenceId>> — tracks which fences each device is currently inside

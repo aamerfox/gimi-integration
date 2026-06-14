@@ -9,8 +9,8 @@ import { writeFileSync } from 'fs';
 
 const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
 const APP_SECRET = 'd1bf0654370a4a148abacd02abe8146e';
-const ACCOUNT = 'GBH2025';
-const PASSWORD_MD5 = '4a026bcce174570b8b0411600017f2f2';
+const ACCOUNT = 'celorvx';
+const PASSWORD_MD5 = 'f957a13a22549e419540196068eadbc7';
 
 const ENDPOINTS = [
     'https://eu-open.tracksolidpro.com/route/rest',
@@ -35,7 +35,7 @@ async function call(url, priv) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15000);
     try {
-        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: qs, signal: ctrl.signal });
+        const res = await fetch(`${url}?${qs}`, { method: 'POST', signal: ctrl.signal });
         clearTimeout(t);
         const text = await res.text();
         try { return JSON.parse(text); } catch { return { code: -1, raw: text.slice(0, 300) }; }

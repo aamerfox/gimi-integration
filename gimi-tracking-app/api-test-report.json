@@ -1,78 +1,78 @@
 {
-  "runAt": "2026-02-23T17:22:26.740Z",
-  "utcTimestamp": "2026-02-23 17:22:26",
-  "account": "GBH2025",
+  "runAt": "2026-06-10T14:41:04.722Z",
+  "utcTimestamp": "2026-06-10 14:41:04",
+  "account": "celorvx",
   "endpoint": "https://eu-open.tracksolidpro.com/route/rest",
   "summary": {
-    "pass": 6,
-    "warn": 4,
-    "fail": 0,
-    "skip": 0,
+    "pass": 1,
+    "warn": 0,
+    "fail": 1,
+    "skip": 8,
     "total": 10
   },
   "results": [
     {
       "id": "T01",
       "name": "Authentication (jimi.oauth.token.get)",
-      "status": "PASS",
-      "code": "0",
-      "note": "Token: 19bd4ae61d61150a0cb3995baabdb934  |  Endpoint: https://eu-open.tracksolidpro.com/route/rest"
+      "status": "FAIL",
+      "code": "ALL",
+      "note": "All endpoints failed. Check APP_KEY / pwd / account / network."
     },
     {
       "id": "T02",
-      "name": "Device List (jimi.user.device.list)",
-      "status": "PASS",
-      "code": "0",
-      "note": "1 device(s). First IMEI: 780901703187828"
+      "name": "Device List",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
     },
     {
       "id": "T03",
-      "name": "Live Locations (jimi.user.device.location.list)",
-      "status": "PASS",
-      "code": "0",
-      "note": "1 device location(s). Sample: lat=24.816437, lng=46.654068, speed=nullkm/h, posType=BEACON"
+      "name": "Live Locations",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
     },
     {
       "id": "T04",
-      "name": "Track History (jimi.device.track.list)",
-      "status": "PASS",
-      "code": "0",
-      "note": "145 GPS point(s) in last 24h for 780901703187828"
+      "name": "Track History",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token/IMEI"
     },
     {
       "id": "T05",
-      "name": "Geofence List (jimi.open.platform.fence.list)",
-      "status": "PASS",
-      "code": "0",
-      "note": "0 platform fence(s) found"
+      "name": "Geofence List",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
     },
     {
       "id": "T06",
       "name": "Device Fence Create",
-      "status": "WARN",
-      "code": "12003",
-      "note": "创建电子围栏失败，结果码：41005"
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token/IMEI"
     },
     {
       "id": "T07",
       "name": "Platform Fence Create",
-      "status": "WARN",
-      "code": "undefined",
-      "note": "Required String parameter 'geom' is not present"
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
     },
     {
       "id": "T08",
       "name": "Device Alarms",
-      "status": "WARN",
-      "code": "1001",
-      "note": "缺少方法名参数或不存在的方法名"
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token/IMEI"
     },
     {
       "id": "T09",
       "name": "All-Device Alarms",
-      "status": "WARN",
-      "code": "1001",
-      "note": "缺少方法名参数或不存在的方法名"
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
     },
     {
       "id": "T10",

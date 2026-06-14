@@ -1,0 +1,85 @@
+{
+  "runAt": "2026-06-08T14:34:05.257Z",
+  "utcTimestamp": "2026-06-08 14:34:05",
+  "account": "GBH2025",
+  "endpoint": "https://eu-open.tracksolidpro.com/route/rest",
+  "summary": {
+    "pass": 1,
+    "warn": 0,
+    "fail": 1,
+    "skip": 8,
+    "total": 10
+  },
+  "results": [
+    {
+      "id": "T01",
+      "name": "Authentication (jimi.oauth.token.get)",
+      "status": "FAIL",
+      "code": "ALL",
+      "note": "All endpoints failed. Check APP_KEY / pwd / account / network."
+    },
+    {
+      "id": "T02",
+      "name": "Device List",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
+    },
+    {
+      "id": "T03",
+      "name": "Live Locations",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
+    },
+    {
+      "id": "T04",
+      "name": "Track History",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token/IMEI"
+    },
+    {
+      "id": "T05",
+      "name": "Geofence List",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
+    },
+    {
+      "id": "T06",
+      "name": "Device Fence Create",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token/IMEI"
+    },
+    {
+      "id": "T07",
+      "name": "Platform Fence Create",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
+    },
+    {
+      "id": "T08",
+      "name": "Device Alarms",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token/IMEI"
+    },
+    {
+      "id": "T09",
+      "name": "All-Device Alarms",
+      "status": "SKIP",
+      "code": "-",
+      "note": "No token"
+    },
+    {
+      "id": "T10",
+      "name": "MD5 Signature",
+      "status": "PASS",
+      "code": "-",
+      "note": "sig=533854127CE448FE65B4A02B6559D62A  valid=true"
+    }
+  ]
+}

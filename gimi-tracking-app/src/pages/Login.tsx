@@ -122,30 +122,30 @@ export default function Login() {
                 }}
             >
                 {/* Logo */}
-                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                    <div style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: '16px',
-                        background: 'linear-gradient(135deg, #1e3a8a, #0891b2)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '16px',
-                        boxShadow: 'var(--accent-glow)',
-                    }}>
-                        <span dir="ltr" style={{ color: '#fff', fontSize: '20px', fontWeight: 800, letterSpacing: '-0.03em' }}>t+</span>
-                    </div>
-                    <h1 dir="ltr" style={{
-                        fontSize: '24px',
-                        fontWeight: 700,
-                        letterSpacing: '-0.03em',
-                        marginBottom: '4px',
-                    }}>
-                        trace<span style={{ color: '#0891b2' }}>+</span>
-                    </h1>
-                    <p dir="ltr" style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                        {t('auth.subtitle')}
+                <div style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <h1 className="sr-only">trace+</h1>
+                    <img
+                        src="/logo-icon.png"
+                        alt="trace+ icon"
+                        className="brand-logo-icon"
+                        style={{
+                            width: 64,
+                            height: 64,
+                            objectFit: 'contain',
+                            marginBottom: '12px',
+                        }}
+                    />
+                    <img
+                        src="/logo-wordmark.png"
+                        alt="trace+ logo"
+                        className="brand-logo-wordmark"
+                        style={{
+                            height: 48,
+                            objectFit: 'contain',
+                        }}
+                    />
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                        Fleet Tracking Platform
                     </p>
                 </div>
 

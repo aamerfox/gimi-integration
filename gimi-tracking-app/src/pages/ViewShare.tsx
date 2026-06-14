@@ -128,7 +128,8 @@ export default function ViewShare() {
             layers: [streetLayer] // Default to street
         });
 
-        L.control.layers(baseMaps).addTo(map);
+        const isRtl = document.documentElement.dir === 'rtl';
+        L.control.layers(baseMaps, undefined, { position: isRtl ? 'bottomleft' : 'bottomright' }).addTo(map);
         mapRef.current = map;
 
         const icon = createMarkerIcon();
@@ -222,7 +223,7 @@ export default function ViewShare() {
             map.remove();
             mapRef.current = null;
         };
-    }, [searchParams]);
+    }, [searchParams, t]);
 
     if (error) {
         return (
@@ -274,7 +275,7 @@ export default function ViewShare() {
             </div>
 
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
+            <MapZoomControls mapRef={mapRef as unknown as React.RefObject<L.Map | null>} style={{ position: 'absolute', bottom: 24, insetInlineEnd: 16, zIndex: 998 }} />
         </div>
     );
 }

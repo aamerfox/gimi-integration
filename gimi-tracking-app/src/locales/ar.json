@@ -11,7 +11,9 @@
         "refresh": "تحديث",
         "noData": "لا توجد بيانات",
         "selectDevice": "اختر جهازاً",
-        "connecting": "جاري الاتصال..."
+        "connecting": "جاري الاتصال...",
+        "minimize": "تصغير",
+        "maximize": "توسيع"
     },
     "nav": {
         "dashboard": "لوحة القيادة",
@@ -77,7 +79,8 @@
         "passwordPlaceholder": "أدخل كلمة المرور",
         "signIn": "تسجيل الدخول",
         "signingIn": "جاري الدخول...",
-        "loginFailed": "فشل تسجيل الدخول"
+        "loginFailed": "فشل تسجيل الدخول",
+        "logout": "تسجيل الخروج"
     },
     "share": {
         "title": "مشاركة الموقع",
@@ -94,5 +97,73 @@
         "expired": "منتهي الصلاحية",
         "invalidLink": "هذا الرابط غير صالح أو منتهي الصلاحية.",
         "linkInactive": "رابط غير نشط"
+    },
+    "deviceDetails": {
+        "address": "العنوان",
+        "noAddress": "لا يوجد وصف للعنوان",
+        "coordinates": "الإحداثيات",
+        "gnss": "GNSS",
+        "lastFix": "آخر إشارة",
+        "todaysActivity": "نشاط اليوم",
+        "todaysMileage": "مسافة اليوم",
+        "batteryStrength": "قوة البطارية الداخلية",
+        "live": "مباشر",
+        "tracks": "المسارات",
+        "share": "مشاركة",
+        "speed": "السرعة"
+    },
+    "reports": {
+        "title": "التقارير والتحليلات",
+        "device": "الجهاز",
+        "allDevices": "جميع الأجهزة",
+        "startDate": "تاريخ ووقت البدء",
+        "endDate": "تاريخ ووقت الانتهاء",
+        "type": "نوع التقرير",
+        "generate": "توليد التقرير",
+        "export": "تصدير إلى CSV",
+        "stats": {
+            "totalDistance": "إجمالي المسافة",
+            "totalStops": "إجمالي التوقفات",
+            "stopDuration": "إجمالي مدة التوقف",
+            "totalAlarms": "إجمالي التنبيهات",
+            "avgSpeed": "متوسط السرعة",
+            "maxSpeed": "أقصى سرعة"
+        },
+        "types": {
+            "trips": "الرحلات والمسافات",
+            "parking": "المواقف والتوقفات",
+            "alarms": "تنبيهات الأجهزة"
+        },
+        "table": {
+            "time": "الوقت",
+            "startTime": "وقت البدء",
+            "endTime": "وقت الانتهاء",
+            "device": "اسم الجهاز",
+            "details": "التفاصيل",
+            "mileage": "المسافة المقطوعة",
+            "duration": "المدة",
+            "type": "نوع التنبيه",
+            "speed": "السرعة",
+            "location": "الموقع"
+        },
+        "noData": "لم يتم العثور على بيانات للفلاتر المحددة.",
+        "loading": "جاري توليد التقرير من Tracksolid API...",
+        "filters": {
+            "accType": "حالة التشغيل (ACC)",
+            "accOn": "ACC ON (تشغيل)",
+            "accOff": "ACC OFF (إطفاء/خمول)",
+            "accAll": "جميع التوقفات",
+            "minStopDuration": "الحد الأدنى للتوقف",
+            "minTripDistance": "الحد الأدنى للرحلة",
+            "alarmType": "فئة التنبيه",
+            "allAlarms": "جميع التنبيهات"
+        }
+    },
+    "geofence": {
+        "title": "السياج الجغرافي",
+        "create": "إنشاء سياج جغرافي",
+        "delete": "حذف السياج الجغرافي",
+        "radius": "نصف القطر",
+        "name": "اسم السياج الجغرافي"
     }
 }

@@ -30,6 +30,16 @@ export const gimiService = {
         });
     },
 
+    // 3b. Device Location
+    getDeviceLocation: async (accessToken: string, imei: string) => {
+        return api.post('', {
+            method: 'jimi.device.location.get',
+            access_token: accessToken,
+            imei: imei,
+            map_type: 'GOOGLE',
+        });
+    },
+
     // 4. Track History
     getTrackHistory: async (accessToken: string, imei: string, beginTime: string, endTime: string) => {
         return api.post('', {
@@ -42,12 +52,84 @@ export const gimiService = {
         });
     },
 
+    // 4b. Parking Report (Stops)
+    getParkingReport: async (
+        accessToken: string,
+        account: string,
+        imei: string,
+        startTime: string,
+        endTime: string,
+        accType: 'on' | 'off' = 'off',
+        startRow = 1,
+        pageSize = 100
+    ) => {
+        return api.post('', {
+            method: 'jimi.open.platform.report.parking',
+            access_token: accessToken,
+            account: account,
+            imeis: imei,
+            start_time: startTime,
+            end_time: endTime,
+            acc_type: accType,
+            start_row: String(startRow),
+            page_size: String(pageSize),
+        });
+    },
+
+    // 4c. Track Mileage (Trip Distance)
+    getTrackMileage: async (
+        accessToken: string,
+        imei: string,
+        beginTime: string,
+        endTime: string
+    ) => {
+        return api.post('', {
+            method: 'jimi.device.track.mileage',
+            access_token: accessToken,
+            imeis: imei,
+            begin_time: beginTime,
+            end_time: endTime,
+        });
+    },
+
+    // 4d. Trips Report (per-trip details — matches TrackSolid Pro)
+    getTripsReport: async (
+        accessToken: string,
+        account: string,
+        imeis: string,
+        startTime: string,
+        endTime: string,
+        startRow = 1,
+        pageSize = 100
+    ) => {
+        return api.post('', {
+            method: 'jimi.open.platform.report.trips',
+            access_token: accessToken,
+            account: account,
+            imeis: imeis,
+            type: 'list',
+            start_time: startTime,
+            end_time: endTime,
+            start_row: String(startRow),
+            page_size: String(pageSize),
+        });
+    },
+
     // 5. Geofences — List
     getGeofences: async (accessToken: string, account: string) => {
         return api.post('', {
             method: 'jimi.open.platform.fence.list',
             access_token: accessToken,
             account: account,
+        });
+    },
+
+    // 5b. Geofences — Device-level List
+    getDeviceFences: async (accessToken: string, imei: string) => {
+        return api.post('', {
+            method: 'jimi.open.device.fence.list',
+            access_token: accessToken,
+            imei: imei,
         });
     },
 
@@ -143,6 +225,81 @@ export const gimiService = {
             end_time: endTime,
             page_no: pageNo.toString(),
             page_size: pageSize.toString(),
+        });
+    },
+
+    // 11. Update Device Name
+    updateDeviceName: async (
+        accessToken: string,
+        imei: string,
+        deviceName: string
+    ) => {
+        return api.post('', {
+            method: 'jimi.open.device.update',
+            access_token: accessToken,
+            imei: imei,
+            device_name: deviceName,
+        });
+    },
+
+    // 12. Create Child Account
+    createChildAccount: async (
+        accessToken: string,
+        accountId: string,
+        nickName: string,
+        accountType: number,
+        passwordMd5: string,
+        email: string,
+        telephone?: string
+    ) => {
+        return api.post('', {
+            method: 'jimi.user.child.create',
+            access_token: accessToken,
+            account_id: accountId,
+            nick_name: nickName,
+            account_type: accountType,
+            password: passwordMd5,
+            email: email,
+            telephone: telephone,
+        });
+    },
+
+    // 13. List Child Accounts
+    getChildAccounts: async (accessToken: string, targetAccount: string) => {
+        return api.post('', {
+            method: 'jimi.user.child.list',
+            access_token: accessToken,
+            target: targetAccount,
+        });
+    },
+
+    // 14. Get Operation Logs
+    getOperationLogs: async (
+        accessToken: string,
+        targetAccount: string,
+        beginTime: string,
+        endTime: string,
+        pageNo = 1,
+        pageSize = 50
+    ) => {
+        return api.post('', {
+            method: 'jimi.user.log.list',
+            access_token: accessToken,
+            target: targetAccount,
+            begin_time: beginTime,
+            end_time: endTime,
+            page_no: String(pageNo),
+            page_size: String(pageSize),
+        });
+    },
+
+    // 15. Send Command / Ring Tag
+    sendDeviceCommand: async (accessToken: string, imei: string, command: string) => {
+        return api.post('', {
+            method: 'jimi.open.instruction.send',
+            access_token: accessToken,
+            imei: imei,
+            cmd_val: command,
         });
     },
 };

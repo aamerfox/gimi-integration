@@ -1,0 +1,53 @@
+export const COLORS = {
+  dark: {
+    bgPrimary: '#0a0f1d',
+    bgSecondary: '#121c33',
+    bgElevated: '#1e3a8a',
+    bgCard: 'rgba(18, 28, 51, 0.95)',
+    accent: '#0891b2',
+    accentDim: 'rgba(8, 145, 178, 0.15)',
+    textPrimary: '#ffffff',
+    textSecondary: '#94a3b8',
+    textMuted: '#475569',
+    border: 'rgba(255, 255, 255, 0.08)',
+    online: '#22c55e',
+    offline: '#475569',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    tabBar: '#121c33',
+    tabBarBorder: 'rgba(255,255,255,0.08)',
+    tint: '#0891b2',
+    text: '#ffffff',
+    background: '#0a0f1d',
+    tabIconDefault: '#475569',
+    tabIconSelected: '#0891b2',
+  },
+  light: {
+    bgPrimary: '#f8fafc',
+    bgSecondary: '#ffffff',
+    bgElevated: '#f1f5f9',
+    bgCard: 'rgba(255,255,255,0.97)',
+    accent: '#1e3a8a',
+    accentDim: 'rgba(30, 58, 138, 0.12)',
+    textPrimary: '#1e3a8a',
+    textSecondary: '#475569',
+    textMuted: '#94a3b8',
+    border: 'rgba(30, 58, 138, 0.09)',
+    online: '#16a34a',
+    offline: '#64748b',
+    warning: '#d97706',
+    danger: '#dc2626',
+    tabBar: '#ffffff',
+    tabBarBorder: 'rgba(30, 58, 138, 0.08)',
+    tint: '#1e3a8a',
+    text: '#1e3a8a',
+    background: '#f8fafc',
+    tabIconDefault: '#94a3b8',
+    tabIconSelected: '#1e3a8a',
+  },
+} as const;
+
+export type ThemeKey = 'dark' | 'light';
+export type ColorScheme = typeof COLORS.dark;
+
+export default COLORS;

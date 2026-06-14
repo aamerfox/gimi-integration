@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/auth';
 
 // TrackSolid Pro Open API (EU node)
 // In development (npm run dev), use Vite's proxy (/api) to bypass CORS.
-let BASE_URL = import.meta.env.DEV ? '/api' : '/token';
+const BASE_URL = import.meta.env.DEV ? '/api' : '/token';
 
 // App Credentials from Documentation
 const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';

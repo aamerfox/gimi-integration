@@ -10,8 +10,8 @@ import fs from 'fs';
 const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
 const APP_SECRET = 'd1bf0654370a4a148abacd02abe8146e';
 const BASE_URL = 'https://eu-open.tracksolidpro.com/route/rest';
-const ACCOUNT = 'GBH2025';
-const PASSWORD_MD5 = '4a026bcce174570b8b0411600017f2f2';
+const ACCOUNT = 'celorvx';
+const PASSWORD_MD5 = 'f957a13a22549e419540196068eadbc7';
 
 const log = [];
 function L(msg) { log.push(msg); }
@@ -77,6 +77,7 @@ async function main() {
 
     if (loginRes.code !== 0) {
         L(`  FAIL: code=${loginRes.code}, msg=${loginRes.message}`);
+        L(`  Raw response: ${JSON.stringify(loginRes)}`);
         L('Cannot proceed without login.');
         fs.writeFileSync('test-full-results.txt', log.join('\n'), 'utf8');
         console.log('Done (login failed). Results in test-full-results.txt');

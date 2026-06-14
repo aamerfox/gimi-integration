@@ -1,0 +1,156 @@
+{
+    "common": {
+        "loading": "Loading...",
+        "error": "An error occurred",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "search": "Search...",
+        "refresh": "Refresh",
+        "noData": "No data available",
+        "selectDevice": "Select a device",
+        "connecting": "Connecting...",
+        "searchBtn": "Search"
+    },
+    "tabs": {
+        "map": "Live Map",
+        "geofences": "Geofences",
+        "alerts": "Alerts",
+        "history": "History",
+        "share": "Share"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "map": "Live Map",
+        "devices": "Devices",
+        "reports": "Reports",
+        "settings": "Settings",
+        "profile": "Profile",
+        "alerts": "Alerts",
+        "geofences": "Geofences",
+        "history": "History",
+        "share": "Share Link"
+    },
+    "history": {
+        "from": "From",
+        "to": "To",
+        "loadTrack": "Load Track",
+        "pointsLoaded": "points loaded",
+        "maxDaysExceeded": "Maximum 7 days of history can be loaded at once."
+    },
+    "alertsFilters": {
+        "all": "All",
+        "geofence": "Geofence",
+        "battery": "Battery"
+    },
+    "alertDesc": {
+        "enterGeofence": "Enter geo-fence",
+        "exitGeofence": "Exit geo-fence"
+    },
+    "alerts": {
+        "rules": "Alert Rules",
+        "addAlert": "Add Alert",
+        "addRule": "Add Alert Rule",
+        "noRules": "No alert rules yet — click Add Alert to create one",
+        "liveEvents": "Live Geofence Events",
+        "clearAll": "Clear All",
+        "alertType": "Alert Type",
+        "ruleName": "Rule Name *",
+        "device": "Device",
+        "allDevices": "All Devices",
+        "geofenceZone": "Geofence Zone",
+        "anyGeofence": "Any Geofence",
+        "speedLimit": "Speed Limit (km/h)",
+        "createRule": "Create Rule"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "welcome": "Welcome back",
+        "totalDevices": "Total Devices",
+        "activeDevices": "Active",
+        "offlineDevices": "Offline",
+        "alerts": "Recent Alerts",
+        "viewAll": "View All",
+        "updated": "Updated {{time}}",
+        "online": "Online",
+        "offline": "Offline",
+        "static": "Static"
+    },
+    "map": {
+        "title": "Live Tracking",
+        "selectDevice": "Select a device to view details",
+        "noDevicesLocation": "No devices with location data found"
+    },
+    "devices": {
+        "title": "Device Management",
+        "addDevice": "Add Device",
+        "deviceName": "Device Name",
+        "imei": "IMEI",
+        "status": "Status",
+        "lastUpdate": "Last Update",
+        "actions": "Actions",
+        "addGroup": "Add Group",
+        "emptyGroup": "Empty group",
+        "moveToGroup": "Move to group...",
+        "stock": "Stock",
+        "total": "Total",
+        "defaultGroup": "Default group",
+        "deleteGroupConfirm": "Are you sure you want to delete this group? Devices will be moved to Default group.",
+        "noOtherGroups": "No other groups exist."
+    },
+    "settings": {
+        "title": "Settings",
+        "language": "Language",
+        "theme": "Theme",
+        "notifications": "Notifications",
+        "saveChanges": "Save Changes"
+    },
+    "auth": {
+        "login": "Login",
+        "email": "Email Address",
+        "password": "Password",
+        "forgotPassword": "Forgot Password?",
+        "dontHaveAccount": "Don't have an account?",
+        "signUp": "Sign Up",
+        "subtitle": "Fleet Tracking Platform",
+        "accountId": "Account ID",
+        "accountIdPlaceholder": "Enter your account ID",
+        "passwordPlaceholder": "Enter your password",
+        "signIn": "Sign In",
+        "signingIn": "Signing in...",
+        "loginFailed": "Login failed",
+        "logout": "Logout",
+        "confirmLogout": "Are you sure you want to log out?"
+    },
+    "share": {
+        "title": "Share Link",
+        "subtitle": "Anyone with the link can view live location \u2014 no login required.",
+        "createLink": "Create Share Link",
+        "device": "DEVICE",
+        "expiresIn": "LINK EXPIRES IN",
+        "generate": "Generate Share Link",
+        "copied": "Copied to Clipboard!",
+        "activeLinks": "Active Links",
+        "clearExpired": "Clear expired",
+        "noLinks": "No share links yet.\nGenerate one above to share a device's live location.",
+        "expires": "Expires",
+        "expired": "Expired",
+        "invalidLink": "This link is invalid or has expired.",
+        "linkInactive": "Link Inactive",
+        "cryptoDesc": "Links are cryptographically signed (HMAC-SHA256) and automatically expire.",
+        "duration": {
+            "1h": "1 hour",
+            "4h": "4 hours",
+            "24h": "24 hours",
+            "7d": "7 days"
+        }
+    },
+    "errors": {
+        "invalidCredentials": "Invalid username or password.",
+        "invalidSignature": "Invalid application signature.",
+        "tokenExpired": "Session expired, please log in again.",
+        "unknown": "An unknown error occurred."
+    }
+}

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-async function mockAuth(page: Page) {
+async function mockAuthAndApi(page: Page) {
     await page.addInitScript(() => {
         const fakeAuth = {
             state: {
@@ -16,6 +16,94 @@ async function mockAuth(page: Page) {
         };
         localStorage.setItem('gimi-auth-storage', JSON.stringify(fakeAuth));
     });
+
+    await page.route('**/api**', async (route) => {
+        const url = route.request().url();
+        if (url.includes('jimi.user.device.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [
+                        {
+                            imei: '123456789012345',
+                            deviceName: 'Test Tracker 1',
+                            icon: 'automobile',
+                            status: '1',
+                            lat: 24.7136,
+                            lng: 46.6753,
+                            posType: 'GPS',
+                            batteryPowerVal: '85',
+                            gpsTime: '2026-06-05 12:00:00',
+                            locDesc: 'Riyadh, Saudi Arabia'
+                        }
+                    ]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.user.device.location.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [
+                        {
+                            imei: '123456789012345',
+                            lat: 24.7136,
+                            lng: 46.6753,
+                            posType: 'GPS',
+                            batteryPowerVal: '85',
+                            gpsTime: '2026-06-05 12:00:00',
+                            locDesc: 'Riyadh, Saudi Arabia'
+                        }
+                    ]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.device.track.mileage')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [{ mileage: 125500 }]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.device.alarm.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: []
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.open.platform.fence.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: []
+                })
+            });
+            return;
+        }
+        await route.continue();
+    });
 }
 
 test.describe('Sidebar Navigation', () => {
@@ -23,7 +111,7 @@ test.describe('Sidebar Navigation', () => {
         page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
         page.on('pageerror', error => console.log('BROWSER ERROR:', error.message));
 
-        await mockAuth(page);
+        await mockAuthAndApi(page);
         await page.goto('/');
         // Wait for the app to fully load
         await page.waitForLoadState('networkidle');
@@ -66,7 +154,7 @@ test.describe('Sidebar Navigation', () => {
 
 test.describe('Page Content Checks', () => {
     test.beforeEach(async ({ page }) => {
-        await mockAuth(page);
+        await mockAuthAndApi(page);
     });
 
     test('History page renders without crashing', async ({ page }) => {

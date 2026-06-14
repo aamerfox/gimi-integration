@@ -44,6 +44,15 @@ const navItems = [
         ),
     },
     {
+        to: '/reports',
+        labelKey: 'nav.reports',
+        icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+        ),
+    },
+    {
         to: '/share-manage',
         labelKey: 'nav.share',
         icon: (
@@ -94,7 +103,7 @@ export default function Sidebar() {
                             to={item.to}
                             end={item.to === '/'}
                             style={({ isActive }) => ({
-                                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
                                 flexDirection: 'column',
                             })}
                         >
@@ -140,6 +149,23 @@ export default function Sidebar() {
                             )}
 
                             <button
+                                onClick={() => { navigate('/settings'); setShowMobileMenu(false); }}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                    width: '100%', padding: '12px', border: 'none',
+                                    background: 'transparent', color: 'var(--text-secondary)',
+                                    cursor: 'pointer', fontSize: '14px', fontFamily: 'inherit',
+                                    borderRadius: 'var(--radius-md)',
+                                }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                </svg>
+                                {t('settings.title')}
+                            </button>
+
+                            <button
                                 onClick={() => { toggleTheme(); setShowMobileMenu(false); }}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '12px',
@@ -178,7 +204,7 @@ export default function Sidebar() {
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                                 </svg>
-                                {t('auth.login')}
+                                {t('auth.logout')}
                             </button>
                             <div style={{ padding: '0 12px' }}>
                                 <LanguageSwitcher />
@@ -222,13 +248,17 @@ export default function Sidebar() {
                 borderBottom: '1px solid var(--border)',
                 flexShrink: 0,
             }}>
-                <div style={{
-                    width: 32, height: 32, borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #1e3a8a, #0891b2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
-                    <span dir="ltr" style={{ color: '#fff', fontSize: '13px', fontWeight: 800, letterSpacing: '-0.03em' }}>t+</span>
-                </div>
+                <img
+                    src="/logo-icon.png"
+                    alt="trace+ icon"
+                    className="brand-logo-icon"
+                    style={{
+                        width: 32,
+                        height: 32,
+                        objectFit: 'contain',
+                        flexShrink: 0,
+                    }}
+                />
                 <span dir="ltr" style={{
                     fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)',
                     whiteSpace: 'nowrap', opacity: expanded ? 1 : 0,
@@ -293,6 +323,30 @@ export default function Sidebar() {
                     </div>
                 )}
 
+                {/* Settings Button */}
+                <button
+                    onClick={() => navigate('/settings')}
+                    title={t('settings.title')}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        padding: '10px 12px', borderRadius: 'var(--radius-md)',
+                        color: 'var(--text-secondary)', background: 'transparent',
+                        border: 'none', cursor: 'pointer', fontSize: '13px',
+                        fontFamily: 'inherit', width: '100%', marginBottom: '2px',
+                        transition: 'background 0.15s ease', whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent-dim)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 0.2s ease' }}>
+                        {t('settings.title')}
+                    </span>
+                </button>
+
                 {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
@@ -343,7 +397,7 @@ export default function Sidebar() {
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
                     <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 0.2s ease' }}>
-                        {t('auth.login')}
+                        {t('auth.logout')}
                     </span>
                 </button>
                 {expanded && (

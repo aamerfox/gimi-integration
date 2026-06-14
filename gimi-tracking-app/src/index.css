@@ -40,7 +40,7 @@
 }
 
 /* ── Design Tokens — Light ───────────────────────────────────── */
-[data-theme="light"] {
+:root[data-theme="light"] {
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-elevated: #f1f5f9;
@@ -543,6 +543,61 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   color: var(--text-primary) !important;
 }
 
+/* ── Leaflet Layers Control Overrides ────────────────────────── */
+.leaflet-control-layers {
+  position: absolute !important;
+  bottom: var(--layers-bottom, 110px) !important;
+  inset-inline-end: 0 !important;
+  top: auto !important;
+  inset-inline-start: auto !important;
+  margin: 0 !important;
+  z-index: 1000 !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.leaflet-control-layers-toggle {
+  width: 36px !important;
+  height: 36px !important;
+  background-size: 20px 20px !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 10px 14px !important;
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  font-family: inherit !important;
+  min-width: 140px !important;
+}
+
+.leaflet-control-layers-list {
+  font-size: 13px !important;
+}
+
+[data-theme="light"] .leaflet-control-layers {
+  background: #ffffff !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .leaflet-control-layers-expanded {
+  background: #ffffff !important;
+  color: var(--text-primary) !important;
+}
+
+/* Position bottom containers 16px away from screen edges to align with zoom controls */
+[dir="ltr"] .leaflet-bottom.leaflet-right {
+  right: 16px !important;
+}
+
+[dir="rtl"] .leaflet-bottom.leaflet-left {
+  left: 16px !important;
+}
+
 /* ── Custom Map Markers ────────────────────────────────────────── */
 .marker-online {
   width: 32px;
@@ -638,6 +693,11 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   /* Clears info card if it exists (right 16 + width 280) */
 }
 
+[dir="ltr"] .map-wrapper .leaflet-bottom.leaflet-right {
+  right: 16px !important;
+  /* Align bottom-right corner with zoom controls */
+}
+
 /* --- RTL specific rules --- */
 /* In RTL, object list is on the right, info card is on the left. */
 /* We keep the map layer control strictly in the left corner (left:16px) */
@@ -662,8 +722,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 [dir="rtl"] .info-card-wrapper {
-  /* Push the info card 64px from the left edge so the map layers control has space to sit in the exact corner */
-  inset-inline-end: 64px;
+  /* Align with left edge since layers control has moved to bottom-left */
+  inset-inline-end: 16px;
 }
 
 .text-muted {
@@ -894,7 +954,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
     align-items: center;
     justify-content: center;
     gap: 3px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     text-decoration: none;
     font-size: 9px;
     font-weight: 500;
@@ -964,4 +1024,22 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   .glass-panel {
     border-radius: var(--radius-md);
   }
+}
+
+/* ── Brand Logo Theme Adaptive Styles ────────────────────────── */
+.brand-logo-icon,
+.brand-logo-wordmark {
+  transition: filter 0.25s ease;
+}
+
+/* Default (Dark theme): Render logos in crisp white */
+.brand-logo-icon,
+.brand-logo-wordmark {
+  filter: brightness(0) invert(1);
+}
+
+/* Light theme: Render logos in their original branding colors */
+[data-theme="light"] .brand-logo-icon,
+[data-theme="light"] .brand-logo-wordmark {
+  filter: none;
 }

@@ -14,13 +14,17 @@ import Reports from './pages/Reports';
 import SettingsPage from './pages/Settings';
 
 function AppInit() {
-  const { theme, lang } = useAppStore();
+  const { theme, lang, darkMode } = useAppStore();
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme === 'default' ? '' : theme);
+    let activeTheme = theme === 'default' ? '' : theme;
+    if (darkMode) {
+      activeTheme = 'trace-dark';
+    }
+    document.documentElement.setAttribute('data-theme', activeTheme);
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
-  }, [theme, lang]);
+  }, [theme, lang, darkMode]);
 
   useLocationPolling();
   return null;

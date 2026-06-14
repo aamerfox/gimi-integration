@@ -26,7 +26,7 @@ export default function Geofences() {
   useEffect(() => {
     if (!accessToken) return;
     gimiService.getGeofences(accessToken, userId || '').then(res => {
-      const resp = res as any;
+      const resp = res as unknown as { data?: Geofence[]; result?: Geofence[] };
       const list = resp?.data || resp?.result || [];
       if (Array.isArray(list)) setFences(list);
     }).catch(() => {});

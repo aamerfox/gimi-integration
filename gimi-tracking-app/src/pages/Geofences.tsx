@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDeviceStore } from '../store/devices';
 import type { Device } from '../store/devices';
 import { useGeofenceStore, FENCE_COLORS } from '../store/geofences';
@@ -7,6 +7,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapZoomControls from '../components/MapZoomControls';
 import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '../store/auth';
+import { gimiService } from '../services/gimi';
 
 const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
 const GOOGLE_STREET_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
@@ -16,8 +18,23 @@ const GOOGLE_SATELLITE_ATTR = 'Map data &copy; <a href="https://www.google.com/m
 type AlarmType = 'in' | 'out' | 'in,out';
 
 export default function Geofences() {
+    const { accessToken } = useAuthStore();
     const { devices } = useDeviceStore();
-    const { geofences, addGeofence, removeGeofence, toggleGeofence } = useGeofenceStore();
+    const { 
+        geofences: localGeofences, 
+        apiGeofences, 
+        isLoadingApi, 
+        fetchApiGeofences, 
+        addGeofence, 
+        removeGeofence, 
+        toggleGeofence 
+    } = useGeofenceStore();
+
+    // Combine local geofences and API geofences
+    const combinedGeofences = useMemo(() => [
+        ...apiGeofences,
+        ...localGeofences.map(g => ({ ...g, isLocal: true }))
+    ], [apiGeofences, localGeofences]);
 
     // ── Form state ────────────────────────────────────────────────────────────
     const [showForm, setShowForm] = useState(false);
@@ -25,6 +42,17 @@ export default function Geofences() {
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const { t } = useTranslation();
+
+    // Fetch API geofences on mount or when devices load
+    const fetchedRef = useRef(false);
+    useEffect(() => {
+        if (!fetchedRef.current || (devices.length > 0 && !fetchedRef.current)) {
+            fetchApiGeofences();
+            if (devices.length > 0) {
+                fetchedRef.current = true;
+            }
+        }
+    }, [fetchApiGeofences, devices.length]);
 
     // Form fields
     const [pickLat, setPickLat] = useState<number | null>(null);
@@ -64,7 +92,8 @@ export default function Geofences() {
             layers: [streetLayer]
         });
 
-        L.control.layers(baseMaps).addTo(map);
+        const isRtl = document.documentElement.dir === 'rtl';
+        L.control.layers(baseMaps, undefined, { position: isRtl ? 'bottomleft' : 'bottomright' }).addTo(map);
 
         mapRef.current = map;
         setTimeout(() => { map.invalidateSize(); setMapReady(true); }, 150);
@@ -125,7 +154,7 @@ export default function Geofences() {
         fenceLayersRef.current.forEach(l => l.remove());
         fenceLayersRef.current = [];
 
-        geofences.forEach((gf: LocalGeofence) => {
+        combinedGeofences.forEach((gf: LocalGeofence) => {
             if (!gf.lat || !gf.lng) return;
             const opacity = gf.enabled ? 0.15 : 0.05;
             const strokeOpacity = gf.enabled ? 1 : 0.3;
@@ -152,9 +181,9 @@ export default function Geofences() {
             `);
             fenceLayersRef.current.push(circle);
         });
-    }, [geofences]);
+    }, [combinedGeofences]);
 
-    useEffect(() => { if (mapReady) drawFences(); }, [geofences, mapReady, drawFences]);
+    useEffect(() => { if (mapReady) drawFences(); }, [combinedGeofences, mapReady, drawFences]);
 
     // ── Preview circle while placing ──────────────────────────────────────────
     useEffect(() => {
@@ -184,36 +213,139 @@ export default function Geofences() {
     }, [pickLat, pickLng, fenceRadius, fenceColor]);
 
     // ── Create geofence ───────────────────────────────────────────────────────
-    const handleCreate = () => {
+    const handleCreate = async () => {
         if (!fenceName.trim()) { setFormError('Fence name is required'); return; }
         if (pickLat === null || pickLng === null) { setFormError('Click on the map first'); return; }
         setSaving(true);
+        setFormError(null);
 
         const device = devices.find((d: Device) => d.imei === fenceImei);
-        addGeofence({
-            fenceName: fenceName.trim(),
-            description: fenceDesc.trim() || undefined,
-            lat: pickLat,
-            lng: pickLng,
-            radius: fenceRadius,
-            alarmType: fenceAlarm,
-            color: fenceColor,
-            imei: fenceImei || undefined,
-            deviceName: device?.deviceName,
-        });
 
-        setSuccessMsg(`Geofence "${fenceName.trim()}" created ✓`);
-        resetForm();
-        setSaving(false);
-        setTimeout(() => setSuccessMsg(null), 3000);
+        if (fenceImei) {
+            // Has IMEI: Save to TrackSolid API!
+            if (accessToken) {
+                try {
+                    let apiAlarmType: 'in' | 'out' | 'in,out' = 'in,out';
+                    if (fenceAlarm === 'in') apiAlarmType = 'in';
+                    else if (fenceAlarm === 'out') apiAlarmType = 'out';
+
+                    await gimiService.createDeviceFence(
+                        accessToken,
+                        fenceImei,
+                        fenceName.trim(),
+                        pickLat,
+                        pickLng,
+                        fenceRadius,
+                        apiAlarmType
+                    );
+                    setSuccessMsg(`Geofence "${fenceName.trim()}" created on TrackSolid ✓`);
+                    await fetchApiGeofences();
+                    resetForm();
+                } catch (err: unknown) {
+                    console.error('Failed to create fence on TrackSolid, falling back to local:', err);
+                    addGeofence({
+                        fenceName: fenceName.trim(),
+                        description: fenceDesc.trim() || undefined,
+                        lat: pickLat,
+                        lng: pickLng,
+                        radius: fenceRadius,
+                        alarmType: fenceAlarm,
+                        color: fenceColor,
+                        imei: fenceImei,
+                        deviceName: device?.deviceName,
+                    });
+                    setSuccessMsg(`Geofence "${fenceName.trim()}" created locally (fallback) ✓`);
+                    resetForm();
+                } finally {
+                    setSaving(false);
+                    setTimeout(() => setSuccessMsg(null), 3000);
+                }
+            } else {
+                setFormError('Authentication required');
+                setSaving(false);
+            }
+        } else {
+            // No IMEI: Local only
+            addGeofence({
+                fenceName: fenceName.trim(),
+                description: fenceDesc.trim() || undefined,
+                lat: pickLat,
+                lng: pickLng,
+                radius: fenceRadius,
+                alarmType: fenceAlarm,
+                color: fenceColor,
+                imei: undefined,
+                deviceName: undefined,
+            });
+            setSuccessMsg(`Geofence "${fenceName.trim()}" created locally ✓`);
+            resetForm();
+            setSaving(false);
+            setTimeout(() => setSuccessMsg(null), 3000);
+        }
     };
 
     // ── Delete geofence ───────────────────────────────────────────────────────
-    const handleDelete = (gf: LocalGeofence) => {
+    const handleDelete = async (gf: LocalGeofence) => {
         if (!confirm(`Delete geofence "${gf.fenceName}"?`)) return;
-        removeGeofence(gf.id);
-        setSuccessMsg(`"${gf.fenceName}" deleted`);
-        setTimeout(() => setSuccessMsg(null), 2000);
+        setFormError(null);
+
+        if (gf.isLocal) {
+            removeGeofence(gf.id);
+            setSuccessMsg(`"${gf.fenceName}" deleted`);
+            setTimeout(() => setSuccessMsg(null), 2000);
+        } else {
+            setSaving(true);
+            try {
+                if (accessToken && gf.imei) {
+                    await gimiService.deleteDeviceFence(accessToken, gf.imei, gf.id);
+                    setSuccessMsg(`"${gf.fenceName}" deleted from TrackSolid`);
+                    await fetchApiGeofences();
+                } else {
+                    setFormError('Cannot delete platform-level API geofence without IMEI');
+                }
+            } catch (err: unknown) {
+                const errorMsg = err instanceof Error ? err.message : 'Failed to delete geofence from TrackSolid';
+                setFormError(errorMsg);
+            } finally {
+                setSaving(false);
+                setTimeout(() => { setSuccessMsg(null); setFormError(null); }, 3000);
+            }
+        }
+    };
+
+    // ── Toggle/Update geofence ───────────────────────────────────────────────
+    const handleToggle = async (gf: LocalGeofence) => {
+        setFormError(null);
+        if (gf.isLocal) {
+            toggleGeofence(gf.id);
+        } else {
+            if (accessToken && gf.imei) {
+                setSaving(true);
+                try {
+                    await gimiService.createDeviceFence(
+                        accessToken,
+                        gf.imei,
+                        gf.fenceName,
+                        gf.lat,
+                        gf.lng,
+                        gf.radius,
+                        gf.alarmType,
+                        gf.enabled ? 'OFF' : 'ON'
+                    );
+                    setSuccessMsg(`Geofence "${gf.fenceName}" ${gf.enabled ? 'disabled' : 'enabled'} on TrackSolid`);
+                    await fetchApiGeofences();
+                } catch (err: unknown) {
+                    const errorMsg = err instanceof Error ? err.message : 'Failed to toggle geofence on TrackSolid';
+                    setFormError(errorMsg);
+                } finally {
+                    setSaving(false);
+                    setTimeout(() => { setSuccessMsg(null); setFormError(null); }, 3000);
+                }
+            } else {
+                setFormError('Cannot toggle API geofence without IMEI');
+                setTimeout(() => setFormError(null), 3000);
+            }
+        }
     };
 
     const resetForm = () => {
@@ -225,7 +357,7 @@ export default function Geofences() {
         setFenceRadius(500);
         setFenceAlarm('in,out');
         setFenceImei('');
-        setFenceColor(FENCE_COLORS[geofences.length % FENCE_COLORS.length]);
+        setFenceColor(FENCE_COLORS[combinedGeofences.length % FENCE_COLORS.length]);
         setFormError(null);
         previewCircleRef.current?.remove();
         previewMarkerRef.current?.remove();
@@ -237,14 +369,14 @@ export default function Geofences() {
         }
     };
 
-    const activeCount = geofences.filter(g => g.enabled).length;
+    const activeCount = combinedGeofences.filter(g => g.enabled).length;
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div style={{ position: 'relative', height: '100vh', overflow: 'hidden' }}>
             {/* Map */}
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-            <MapZoomControls mapRef={mapRef as React.RefObject<any>} style={{ position: 'absolute', bottom: 24, right: 16, zIndex: 998 }} />
+            <MapZoomControls mapRef={mapRef as unknown as React.RefObject<L.Map | null>} style={{ position: 'absolute', bottom: 24, insetInlineEnd: 16, zIndex: 998 }} />
 
             {/* ─── Left panel: Geofence list ─────────────────────────────── */}
             <div
@@ -263,8 +395,26 @@ export default function Geofences() {
                                 <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
                             </svg>
                             {t('nav.geofences')}
+                            {isLoadingApi && (
+                                <span className="sx-spinner" style={{ width: '12px', height: '12px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 1s linear infinite' }} />
+                            )}
                         </h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                                onClick={fetchApiGeofences}
+                                title="Sync from TrackSolid"
+                                disabled={isLoadingApi}
+                                style={{
+                                    border: 'none', background: 'transparent', cursor: 'pointer',
+                                    color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', opacity: isLoadingApi ? 0.5 : 0.8,
+                                    transition: 'opacity 0.15s', padding: '4px'
+                                }}
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isLoadingApi ? 'rotate(360deg)' : 'none', transition: 'transform 1s ease-in-out' }}>
+                                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                                </svg>
+                            </button>
                             <span
                                 style={{
                                     fontSize: '11px', fontWeight: 600, padding: '2px 8px',
@@ -274,9 +424,9 @@ export default function Geofences() {
                             >
                                 {activeCount} active
                             </span>
-                            {geofences.length > 0 && (
+                            {combinedGeofences.length > 0 && (
                                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                    / {geofences.length}
+                                    / {combinedGeofences.length}
                                 </span>
                             )}
                         </div>
@@ -295,7 +445,7 @@ export default function Geofences() {
 
                 {/* Geofence list */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-                    {geofences.length === 0 ? (
+                    {combinedGeofences.length === 0 ? (
                         <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ margin: '0 auto 12px', display: 'block', opacity: 0.4 }}>
                                 <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
@@ -305,7 +455,7 @@ export default function Geofences() {
                             <p style={{ fontSize: '13px', fontWeight: 500 }}>{t('common.noData')}</p>
                         </div>
                     ) : (
-                        geofences.map((gf: LocalGeofence) => (
+                        combinedGeofences.map((gf: LocalGeofence) => (
                             <div
                                 key={gf.id}
                                 style={{
@@ -336,7 +486,7 @@ export default function Geofences() {
 
                                     {/* Toggle */}
                                     <button
-                                        onClick={() => toggleGeofence(gf.id)}
+                                        onClick={() => handleToggle(gf)}
                                         title={gf.enabled ? 'Disable fence' : 'Enable fence'}
                                         style={{
                                             width: 28, height: 16, borderRadius: '999px', border: 'none', cursor: 'pointer',
@@ -387,6 +537,15 @@ export default function Geofences() {
                                     ) : (
                                         <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}>
                                             All devices
+                                        </span>
+                                    )}
+                                    {gf.isLocal ? (
+                                        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.08)', color: 'var(--warn)' }}>
+                                            Local
+                                        </span>
+                                    ) : (
+                                        <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(59,130,246,0.08)', color: '#3b82f6' }}>
+                                            TrackSolid
                                         </span>
                                     )}
                                 </div>

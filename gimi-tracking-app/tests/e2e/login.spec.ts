@@ -7,7 +7,7 @@ test.describe('Login Page', () => {
 
     test('should display login form with correct elements', async ({ page }) => {
         // Logo / branding
-        await expect(page.locator('h1')).toContainText('SaudiEx');
+        await expect(page.locator('h1')).toContainText('trace+');
         await expect(page.getByText('Fleet Tracking Platform')).toBeVisible();
 
         // Inputs
@@ -18,7 +18,7 @@ test.describe('Login Page', () => {
         await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
 
         // Footer
-        await expect(page.getByText('Powered by TrackSolid Pro')).toBeVisible();
+        await expect(page.getByText('Powered by trace+')).toBeVisible();
     });
 
     test('should show error on invalid credentials', async ({ page }) => {

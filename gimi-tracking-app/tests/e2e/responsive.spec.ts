@@ -82,6 +82,7 @@ test.describe('Theme and Language', () => {
         await expect(body).toBeVisible({ timeout: 5000 });
         // Just ensure the styling is applied and page isn't broken
         const htmlClass = await page.locator('html, body').first().getAttribute('class');
+        expect(htmlClass).toBeDefined();
         // Could be null or have a theme class — just verify page renders
         expect(page.url()).not.toMatch(/login/);
     });

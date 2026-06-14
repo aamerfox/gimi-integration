@@ -1,0 +1,26 @@
+Running 2 tests using 1 worker
+
+BROWSER CONSOLE: [vite] connecting...
+BROWSER CONSOLE: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+BROWSER CONSOLE: 🌐 i18next is maintained with support from Locize — consider powering your project with managed localization (AI, CDN, integrations): https://locize.com 💙
+BROWSER CONSOLE: [vite] connected.
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+  ok 1 [chromium] › tests\e2e\trace-mileage.spec.ts:132:5 › Tracksolid Pro Integration Features › Dashboard shows Today Activity mileage and battery from API (2.7s)
+BROWSER CONSOLE: [vite] connecting...
+BROWSER CONSOLE: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+BROWSER CONSOLE: 🌐 i18next is maintained with support from Locize — consider powering your project with managed localization (AI, CDN, integrations): https://locize.com 💙
+BROWSER CONSOLE: [vite] connected.
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(3)}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, data: Object}
+BROWSER CONSOLE: [GIMI API Response] {code: 0, message: success, result: Array(1)}
+  ok 2 [chromium] › tests\e2e\trace-mileage.spec.ts:153:5 › Tracksolid Pro Integration Features › History Page displays premium stops, duration, average speed and mileage (2.9s)
+
+  2 passed (8.9s)

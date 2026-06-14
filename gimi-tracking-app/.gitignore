@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Test evidence and scratch files
+test_evidence.txt
+test_evidence_utf8.txt
+scratch_geofences.mjs
+test-post-eu.mjs
