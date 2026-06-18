@@ -463,13 +463,15 @@ const Settings = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="deviceImei" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Mapped OCI Device IMEI (Optional)</label>
+                                    <label htmlFor="deviceImei" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px', display: 'block' }}>
+                                        {language === 'ar' ? 'أرقام IMEIs لأجهزة OCI المربوطة (اختياري، مفصولة بفواصل)' : 'Mapped OCI Device IMEIs (Optional, comma-separated)'}
+                                    </label>
                                     <input 
                                         id="deviceImei"
                                         type="text" 
                                         value={deviceImei} 
                                         onChange={(e) => setDeviceImei(e.target.value)}
-                                        placeholder="e.g. 781950640051748"
+                                        placeholder={language === 'ar' ? 'مثال: 781950640051748, 781950640053643' : 'e.g. 781950640051748, 781950640053643'}
                                         className="sx-input"
                                     />
                                 </div>
