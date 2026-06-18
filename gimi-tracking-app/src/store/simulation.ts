@@ -7,6 +7,8 @@ export interface ChildAccount {
     email: string;
     telephone?: string;
     roleName: string;
+    passwordMd5?: string; // Persisted MD5 of password to allow login bypass
+    deviceImei?: string;  // Mapped OCI device IMEI
 }
 
 export interface AuditLog {
@@ -24,6 +26,8 @@ interface SimulationState {
     simulatedLogs: AuditLog[];
     setIsSimulatedOperator: (val: boolean) => void;
     addChildAccount: (account: ChildAccount) => void;
+    deleteChildAccount: (accountId: string) => void;
+    updateChildAccount: (account: ChildAccount) => void;
     addLog: (action: string, accountName: string, status: 'Success' | 'Failed', details?: string) => void;
     clearLogs: () => void;
 }
@@ -34,11 +38,21 @@ export const useSimulationStore = create<SimulationState>()(
             isSimulatedOperator: false,
             simulatedChildAccounts: [
                 {
+                    accountId: 'hertz',
+                    nickName: 'Hertz OCI Sub-Account',
+                    email: 'hertz@saudiex.com',
+                    telephone: '0500000000',
+                    roleName: 'End User (Read-Only)',
+                    passwordMd5: '80fc588ba13f3af3d64be60ddfd386d8', // hertz08642
+                    deviceImei: '781950640051748',
+                },
+                {
                     accountId: 'saudiex_operator1',
                     nickName: 'Operator One',
                     email: 'operator1@saudiex.com',
                     telephone: '+966501234567',
                     roleName: 'Sub-Account Operator (Read-Only)',
+                    passwordMd5: '36423984ea892556bb20109a909404be', // saudiex123
                 },
                 {
                     accountId: 'saudiex_operator2',
@@ -46,6 +60,7 @@ export const useSimulationStore = create<SimulationState>()(
                     email: 'operator2@saudiex.com',
                     telephone: '+966507654321',
                     roleName: 'Sub-Account Operator (Read-Only)',
+                    passwordMd5: '36423984ea892556bb20109a909404be', // saudiex123
                 }
             ],
             simulatedLogs: [
@@ -78,6 +93,14 @@ export const useSimulationStore = create<SimulationState>()(
 
             addChildAccount: (account) => set((state) => ({
                 simulatedChildAccounts: [account, ...state.simulatedChildAccounts]
+            })),
+
+            deleteChildAccount: (accountId) => set((state) => ({
+                simulatedChildAccounts: state.simulatedChildAccounts.filter(acc => acc.accountId !== accountId)
+            })),
+
+            updateChildAccount: (account) => set((state) => ({
+                simulatedChildAccounts: state.simulatedChildAccounts.map(acc => acc.accountId === account.accountId ? account : acc)
             })),
 
             addLog: (action, accountName, status, details) => set((state) => {

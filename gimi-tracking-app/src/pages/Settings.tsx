@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Moon, Sun, Bell, Shield, Palette, ChevronRight, ArrowLeft, UserPlus, FileText, Trash2, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Moon, Sun, Bell, Shield, Palette, ChevronRight, ArrowLeft, UserPlus, FileText, Trash2, User, CheckCircle2, AlertCircle, Edit } from 'lucide-react';
 import { useThemeStore } from '@/store/theme';
 import { useLanguageStore } from '@/store/languageStore';
 import { useSimulationStore } from '@/store/simulation';
 import type { ChildAccount } from '@/store/simulation';
 import { useAuthStore } from '@/store/auth';
 import { gimiService } from '@/services/gimi';
+import MD5 from 'crypto-js/md5';
 
 const Settings = () => {
     const { t } = useTranslation();
@@ -23,94 +24,208 @@ const Settings = () => {
         simulatedLogs, 
         setIsSimulatedOperator, 
         addChildAccount, 
+        deleteChildAccount,
+        updateChildAccount,
         addLog, 
         clearLogs 
     } = useSimulationStore();
     
     const { accessToken, userId } = useAuthStore();
 
-    // Form state for creating sub-accounts
+    // Form state for creating/editing sub-accounts
     const [showAddForm, setShowAddForm] = useState(false);
+    const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
     const [accountId, setAccountId] = useState('');
     const [nickName, setNickName] = useState('');
     const [password, setPassword] = useState('');
     const [email, setEmail] = useState('');
     const [telephone, setTelephone] = useState('');
+    const [deviceImei, setDeviceImei] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
+
+    const [childAccounts, setChildAccounts] = useState<ChildAccount[]>([]);
+    const [loadingAccounts, setLoadingAccounts] = useState(false);
+
+    const fetchChildAccounts = async () => {
+        if (!accessToken || !userId) {
+            setChildAccounts(simulatedChildAccounts);
+            return;
+        }
+
+        setLoadingAccounts(true);
+        try {
+            const res = await gimiService.getChildAccounts(accessToken, userId) as any;
+            if (res && res.code === 0 && Array.isArray(res.result)) {
+                const mapped: ChildAccount[] = res.result.map((item: any) => ({
+                    accountId: item.account || item.userId || '',
+                    nickName: item.name || item.account || '',
+                    email: item.email || '',
+                    telephone: item.phone || undefined,
+                    roleName: item.type === 9 ? 'End User (Read-Only)' : `User (Type ${item.type})`,
+                }));
+                // Merge local custom accounts that are not in Jimi
+                const localOnly = simulatedChildAccounts.filter(
+                    local => !mapped.some(apiAcc => apiAcc.accountId.toLowerCase() === local.accountId.toLowerCase())
+                );
+                setChildAccounts([...localOnly, ...mapped]);
+            } else {
+                console.warn('Jimi API getChildAccounts returned code != 0 or invalid format:', res);
+                setChildAccounts(simulatedChildAccounts);
+            }
+        } catch (err) {
+            console.error('Failed to fetch child accounts from Jimi API:', err);
+            setChildAccounts(simulatedChildAccounts);
+        } finally {
+            setLoadingAccounts(false);
+        }
+    };
+
+    useEffect(() => {
+        if (showPermissions) {
+            fetchChildAccounts();
+        }
+    }, [showPermissions, accessToken, userId, simulatedChildAccounts]);
+
+    useEffect(() => {
+        // Self-heal: ensure the default hertz account is present in local storage
+        const hasHertz = simulatedChildAccounts.some(acc => acc.accountId.toLowerCase() === 'hertz');
+        if (!hasHertz) {
+            addChildAccount({
+                accountId: 'hertz',
+                nickName: 'Hertz OCI Sub-Account',
+                email: 'hertz@saudiex.com',
+                telephone: '0500000000',
+                roleName: 'End User (Read-Only)',
+                passwordMd5: '80fc588ba13f3af3d64be60ddfd386d8', // hertz08642
+                deviceImei: '781950640051748',
+            });
+        }
+    }, [simulatedChildAccounts, addChildAccount]);
 
     const handleCreateSubAccount = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMsg('');
         setSuccessMsg('');
 
-        if (!accountId || !nickName || !password || !email) {
+        if (!accountId || !nickName || !email) {
             setErrorMsg('Please fill in all required fields.');
             return;
         }
 
+        if (!editingAccountId && !password) {
+            setErrorMsg('Password is required for new accounts.');
+            return;
+        }
+
         if (isSimulatedOperator) {
-            setErrorMsg('Permission Denied: Sub-accounts cannot create other child accounts.');
+            setErrorMsg('Permission Denied: Sub-accounts cannot modify other child accounts.');
             return;
         }
 
         const currentUserId = userId || 'admin';
         try {
-            if (accessToken) {
-                // Call the TrackSolid Pro Open API
-                await gimiService.createChildAccount(
-                    accessToken,
+            if (editingAccountId) {
+                // Editing existing custom account (local)
+                const existing = simulatedChildAccounts.find(acc => acc.accountId === editingAccountId);
+                const updatedAccount: ChildAccount = {
+                    accountId: editingAccountId,
+                    nickName,
+                    email,
+                    telephone: telephone || undefined,
+                    roleName: 'End User (Read-Only)',
+                    passwordMd5: password ? MD5(password).toString() : existing?.passwordMd5,
+                    deviceImei: deviceImei || undefined,
+                };
+                updateChildAccount(updatedAccount);
+                addLog('Edit Sub-Account', currentUserId, 'Success', `Updated details for: ${editingAccountId}`);
+                setSuccessMsg(`Successfully updated child account "${editingAccountId}"!`);
+            } else {
+                // Creating new account
+                if (accessToken && !deviceImei) {
+                    // Call the TrackSolid Pro Open API
+                    const passwordMd5 = MD5(password).toString();
+                    const res = await gimiService.createChildAccount(
+                        accessToken,
+                        accountId,
+                        nickName,
+                        2, // End User role type is 2
+                        passwordMd5, // Hash password as required by API
+                        email,
+                        telephone || undefined
+                    ) as any;
+
+                    if (res && res.code !== 0) {
+                        throw new Error(res.message || `Error code ${res.code}`);
+                    }
+                }
+                
+                // Add account locally for interactive simulation
+                const newAccount: ChildAccount = {
                     accountId,
                     nickName,
-                    2, // End User role type
-                    password, // Plain text or md5 as expected by API
                     email,
-                    telephone || undefined
-                );
+                    telephone: telephone || undefined,
+                    roleName: 'End User (Read-Only)',
+                    passwordMd5: MD5(password).toString(),
+                    deviceImei: deviceImei || undefined,
+                };
+                addChildAccount(newAccount);
+                addLog('Create Sub-Account', currentUserId, 'Success', `Created sub-account: ${accountId}`);
+                setSuccessMsg(`Successfully created child account "${accountId}"!`);
             }
             
-            // Add account locally for interactive simulation
-            const newAccount: ChildAccount = {
-                accountId,
-                nickName,
-                email,
-                telephone: telephone || undefined,
-                roleName: 'Sub-Account Operator (Read-Only)',
-            };
-            addChildAccount(newAccount);
-            addLog('Create Sub-Account', currentUserId, 'Success', `Created sub-account: ${accountId}`);
-            setSuccessMsg(`Successfully created child account "${accountId}"!`);
-            
             // Reset form
             setAccountId('');
             setNickName('');
             setPassword('');
             setEmail('');
             setTelephone('');
+            setDeviceImei('');
             setShowAddForm(false);
+            setEditingAccountId(null);
+
+            // Refresh the sub-accounts list
+            await fetchChildAccounts();
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'API Error';
-            
-            // Proactive simulated fallback for local sandbox / client trial
-            const newAccount: ChildAccount = {
-                accountId,
-                nickName,
-                email,
-                telephone: telephone || undefined,
-                roleName: 'Sub-Account Operator (Read-Only)',
-            };
-            addChildAccount(newAccount);
-            addLog('Create Sub-Account', currentUserId, 'Success', `Created sub-account locally: ${accountId} (API Status: ${msg})`);
-            setSuccessMsg(`Created sub-account "${accountId}" (Simulated fallback active).`);
-            
-            // Reset form
-            setAccountId('');
-            setNickName('');
-            setPassword('');
-            setEmail('');
-            setTelephone('');
-            setShowAddForm(false);
+            const actionLabel = editingAccountId ? 'Edit Sub-Account' : 'Create Sub-Account';
+            addLog(actionLabel, currentUserId, 'Failed', `Failed to process: ${accountId} (API Status: ${msg})`);
+            setErrorMsg(language === 'ar' 
+                ? `فشل حفظ الحساب الفرعي: ${msg}.`
+                : `Failed to save sub-account: ${msg}.`);
         }
+    };
+
+    const handleDeleteSubAccount = (accId: string) => {
+        if (isSimulatedOperator) {
+            alert(language === 'ar' ? 'خطأ: لا يملك هذا الحساب صلاحية حذف الحسابات الفرعية.' : 'Error: Sub-accounts cannot delete child accounts.');
+            return;
+        }
+        const confirmMsg = language === 'ar' 
+            ? `هل أنت متأكد أنك تريد حذف الحساب الفرعي "${accId}"؟`
+            : `Are you sure you want to delete sub-account "${accId}"?`;
+        if (window.confirm(confirmMsg)) {
+            deleteChildAccount(accId);
+            addLog('Delete Sub-Account', userId || 'admin', 'Success', `Deleted custom account: ${accId}`);
+            setSuccessMsg(language === 'ar' ? `تم حذف الحساب "${accId}" بنجاح!` : `Successfully deleted account "${accId}"!`);
+            fetchChildAccounts();
+        }
+    };
+
+    const handleStartEdit = (account: ChildAccount) => {
+        if (isSimulatedOperator) {
+            alert(language === 'ar' ? 'خطأ: لا يملك هذا الحساب صلاحية تعديل الحسابات الفرعية.' : 'Error: Sub-accounts cannot modify child accounts.');
+            return;
+        }
+        setEditingAccountId(account.accountId);
+        setAccountId(account.accountId);
+        setNickName(account.nickName);
+        setPassword('');
+        setEmail(account.email);
+        setTelephone(account.telephone || '');
+        setDeviceImei(account.deviceImei || '');
+        setShowAddForm(true);
     };
 
     // Render Sub-View if active
@@ -239,6 +354,13 @@ const Settings = () => {
                                     alert(language === 'ar' ? 'خطأ: لا يملك هذا الحساب صلاحية إضافة مستخدمين فرعيين.' : 'Error: Sub-accounts cannot create child accounts.');
                                     return;
                                 }
+                                setEditingAccountId(null);
+                                setAccountId('');
+                                setNickName('');
+                                setPassword('');
+                                setEmail('');
+                                setTelephone('');
+                                setDeviceImei('');
                                 setShowAddForm(!showAddForm);
                             }}
                             className="sx-btn sx-btn-ghost sx-btn-sm"
@@ -249,14 +371,17 @@ const Settings = () => {
                         </button>
                     </div>
 
-                    {/* Create Child Form */}
+                    {/* Create/Edit Child Form */}
                     {showAddForm && (
                         <form onSubmit={handleCreateSubAccount} style={{
                             padding: '16px', background: 'var(--bg-secondary)', border: '1px solid var(--border)',
                             borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '12px'
                         }}>
                             <h3 style={{ fontSize: '11px', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, textAlign: 'start' }}>
-                                {language === 'ar' ? 'بيانات الحساب الفرعي الجديد' : 'New Sub-Account Details'}
+                                {editingAccountId 
+                                    ? (language === 'ar' ? `تعديل الحساب الفرعي: ${editingAccountId}` : `Edit Sub-Account: ${editingAccountId}`)
+                                    : (language === 'ar' ? 'بيانات الحساب الفرعي الجديد' : 'New Sub-Account Details')
+                                }
                             </h3>
                             
                             {errorMsg && (
@@ -278,6 +403,7 @@ const Settings = () => {
                                         onChange={(e) => setAccountId(e.target.value)}
                                         placeholder="e.g. saudiex_viewer"
                                         className="sx-input"
+                                        disabled={!!editingAccountId}
                                         required 
                                     />
                                 </div>
@@ -297,15 +423,17 @@ const Settings = () => {
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', textAlign: 'start' }}>
                                 <div>
-                                    <label htmlFor="password" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Password *</label>
+                                    <label htmlFor="password" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px', display: 'block' }}>
+                                        {editingAccountId ? 'New Password (Optional)' : 'Password *'}
+                                    </label>
                                     <input 
                                         id="password"
                                         type="password" 
                                         value={password} 
                                         onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="••••••••"
+                                        placeholder={editingAccountId ? 'Leave empty to keep current' : '••••••••'}
                                         className="sx-input"
-                                        required 
+                                        required={!editingAccountId} 
                                     />
                                 </div>
                                 <div>
@@ -322,22 +450,38 @@ const Settings = () => {
                                 </div>
                             </div>
 
-                            <div style={{ textAlign: 'start' }}>
-                                <label htmlFor="telephone" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Telephone (Optional)</label>
-                                <input 
-                                    id="telephone"
-                                    type="text" 
-                                    value={telephone} 
-                                    onChange={(e) => setTelephone(e.target.value)}
-                                    placeholder="+966 50..."
-                                    className="sx-input"
-                                />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', textAlign: 'start' }}>
+                                <div>
+                                    <label htmlFor="telephone" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Telephone (Optional)</label>
+                                    <input 
+                                        id="telephone"
+                                        type="text" 
+                                        value={telephone} 
+                                        onChange={(e) => setTelephone(e.target.value)}
+                                        placeholder="+966 50..."
+                                        className="sx-input"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="deviceImei" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Mapped OCI Device IMEI (Optional)</label>
+                                    <input 
+                                        id="deviceImei"
+                                        type="text" 
+                                        value={deviceImei} 
+                                        onChange={(e) => setDeviceImei(e.target.value)}
+                                        placeholder="e.g. 781950640051748"
+                                        className="sx-input"
+                                    />
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
                                 <button 
                                     type="button" 
-                                    onClick={() => setShowAddForm(false)}
+                                    onClick={() => {
+                                        setShowAddForm(false);
+                                        setEditingAccountId(null);
+                                    }}
                                     className="sx-btn sx-btn-ghost sx-btn-sm"
                                 >
                                     Cancel
@@ -346,7 +490,7 @@ const Settings = () => {
                                     type="submit" 
                                     className="sx-btn sx-btn-primary sx-btn-sm"
                                 >
-                                    Save Account
+                                    {editingAccountId ? 'Update Account' : 'Save Account'}
                                 </button>
                             </div>
                         </form>
@@ -363,35 +507,95 @@ const Settings = () => {
 
                     {/* Subaccounts List */}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {simulatedChildAccounts.map((account) => (
-                            <div key={account.accountId} style={{
-                                padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                borderBottom: '1px solid var(--border)'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{
-                                        padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                                        borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                    }}>
-                                        <User size={18} />
-                                    </div>
-                                    <div style={{ textAlign: 'start' }}>
-                                        <p style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>{account.nickName}</p>
-                                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>ID: {account.accountId} • {account.email}</p>
-                                    </div>
-                                </div>
-                                <div>
-                                    <span style={{
-                                        background: 'var(--accent-dim)', color: 'var(--accent)',
-                                        fontSize: '10px', fontWeight: 700, padding: '2px 8px',
-                                        borderRadius: '100px', border: '1px solid var(--border-accent)'
-                                    }}>
-                                        {account.roleName}
-                                    </span>
-                                </div>
+                        {loadingAccounts ? (
+                            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                <span style={{ display: 'inline-block', marginInlineEnd: '8px' }}>⏳</span>
+                                {language === 'ar' ? 'جاري تحميل الحسابات الفرعية...' : 'Loading sub-accounts...'}
                             </div>
-                        ))}
+                        ) : childAccounts.length > 0 ? (
+                            childAccounts.map((account) => {
+                                const isCustom = simulatedChildAccounts.some(acc => acc.accountId === account.accountId);
+                                return (
+                                    <div key={account.accountId} style={{
+                                        padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        borderBottom: '1px solid var(--border)'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{
+                                                padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                                                borderRadius: 'var(--radius-sm)', color: isCustom ? 'var(--accent)' : 'var(--text-secondary)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                <User size={18} />
+                                            </div>
+                                            <div style={{ textAlign: 'start' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                    <p style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>{account.nickName}</p>
+                                                    {isCustom && (
+                                                        <span style={{
+                                                            fontSize: '9px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px',
+                                                            background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)'
+                                                        }}>
+                                                            OCI Integration
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                                    ID: {account.accountId} • {account.email}
+                                                    {account.deviceImei && (
+                                                        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>
+                                                            {' • '}OCI IMEI: {account.deviceImei}
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{
+                                                background: 'var(--accent-dim)', color: 'var(--accent)',
+                                                fontSize: '10px', fontWeight: 700, padding: '2px 8px',
+                                                borderRadius: '100px', border: '1px solid var(--border-accent)'
+                                            }}>
+                                                {account.roleName}
+                                            </span>
+                                            
+                                            {isCustom && !isSimulatedOperator && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => handleStartEdit(account)}
+                                                        style={{
+                                                            background: 'transparent', border: '1px solid var(--border)',
+                                                            color: 'var(--text-secondary)', borderRadius: '4px', padding: '4px',
+                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                        }}
+                                                        title="Edit Account"
+                                                    >
+                                                        <Edit size={12} />
+                                                    </button>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => handleDeleteSubAccount(account.accountId)}
+                                                        style={{
+                                                            background: 'transparent', border: '1px solid var(--border)',
+                                                            color: 'var(--danger)', borderRadius: '4px', padding: '4px',
+                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                        }}
+                                                        title="Delete Account"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{ padding: '24px 0', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                {language === 'ar' ? 'لا توجد حسابات فرعية.' : 'No sub-accounts found.'}
+                            </div>
+                        )}
                     </div>
                 </div>
 
