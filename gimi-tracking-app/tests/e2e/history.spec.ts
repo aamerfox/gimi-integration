@@ -78,6 +78,38 @@ async function mockAuthAndApi(page: Page) {
             });
             return;
         }
+        if (url.includes('jimi.device.track.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [
+                        { lat: 24.7136, lng: 46.6753, speed: 40, gpsTime: '2026-06-05 12:00:00', direction: 90, posType: 'GPS' },
+                        { lat: 24.7140, lng: 46.6760, speed: 45, gpsTime: '2026-06-05 12:00:30', direction: 95, posType: 'GPS' },
+                        { lat: 24.7200, lng: 46.6800, speed: 20, gpsTime: '2026-06-05 12:01:00', direction: 100, posType: 'LBS' },
+                        { lat: 24.9900, lng: 46.9900, speed: 180, gpsTime: '2026-06-05 12:01:30', direction: 120, posType: 'GPS' },
+                        { lat: 24.7145, lng: 46.6765, speed: 42, gpsTime: '2026-06-05 12:02:00', direction: 95, posType: 'GPS' }
+                    ]
+                })
+            });
+            return;
+        }
+        if (url.includes('jimi.open.platform.report.parking')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    code: 0,
+                    message: 'success',
+                    result: [
+                        { lat: 24.7136, lng: 46.6753, startTime: '2026-06-05 12:05:00', endTime: '2026-06-05 12:10:00', durSecond: 300, addr: 'Riyadh Stop' }
+                    ]
+                })
+            });
+            return;
+        }
         if (url.includes('jimi.device.alarm.list')) {
             await route.fulfill({
                 status: 200,
@@ -187,5 +219,45 @@ test.describe('History Page', () => {
 
         await maximizeBtn.click();
         await expect(deviceSelect).toBeVisible();
+    });
+
+    test('shows positioning mode dropdown and filters track points correctly', async ({ page }) => {
+        // Select device
+        const deviceSelect = page.locator('select').first();
+        await deviceSelect.selectOption('123456789012345');
+
+        // Verify that Positioning Mode select is visible and defaults to 'all'
+        const posModeDropdown = page.locator('select').filter({ hasText: /Precise|دقيق/ });
+        await expect(posModeDropdown).toBeVisible();
+        await expect(posModeDropdown).toHaveValue('all');
+
+        // Click Load Track
+        const searchBtn = page.locator('button', { hasText: /Load Track|search|بحث/i });
+        await searchBtn.click();
+
+        // Wait for map polyline or stats card to appear
+        const floatingCard = page.locator('div[style*="absolute"]').first();
+        await expect(floatingCard).toBeVisible({ timeout: 8000 });
+
+        // Open detailed tables drawer
+        const viewTablesBtn = page.locator('button', { hasText: /Detailed Tables|الجداول التفصيلية/i });
+        await viewTablesBtn.click();
+
+        // In All mode (default), no filtering. All 5 points should show.
+        const tableRows = page.locator('tbody tr');
+        await expect(tableRows).toHaveCount(5);
+
+        // Switch to Precise mode
+        await posModeDropdown.selectOption('precise');
+        // In Precise mode, LBS points and speed jumps > 100km/h are filtered out.
+        // Out of 5 points: 1 (GPS), 2 (GPS), 3 (LBS - filtered), 4 (speed 180 - filtered), 5 (GPS).
+        // That leaves 3 points.
+        await expect(tableRows).toHaveCount(3);
+
+        // Switch to Optimized mode
+        await posModeDropdown.selectOption('optimized');
+        // In Optimized mode, only speed jumps > 150km/h are filtered.
+        // Point 4 is filtered out, but Point 3 (LBS) is kept. That leaves 4 points.
+        await expect(tableRows).toHaveCount(4);
     });
 });

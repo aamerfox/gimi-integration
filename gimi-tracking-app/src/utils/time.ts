@@ -83,4 +83,16 @@ export function formatToUtcApiTime(localIsoStr: string): string {
     const pad = (n: number) => n < 10 ? `0${n}` : String(n);
     return `${localDate.getUTCFullYear()}-${pad(localDate.getUTCMonth() + 1)}-${pad(localDate.getUTCDate())} ${pad(localDate.getUTCHours())}:${pad(localDate.getUTCMinutes())}:${pad(localDate.getUTCSeconds())}`;
 }
-
+/**
+ * Converts a local datetime-local picker string (YYYY-MM-DDTHH:mm) to LOCAL API string (yyyy-MM-dd HH:mm:ss).
+ * Use this for data time parameters (begin_time, end_time) in the Tracksolid API.
+ * The Tracksolid API interprets these times in the ACCOUNT's local timezone, NOT UTC.
+ * Only the signing `timestamp` field must be UTC (handled separately in api.ts).
+ */
+export function formatToLocalApiTime(localIsoStr: string): string {
+    if (!localIsoStr) return '';
+    // The datetime-local input value is already in local time — just reformat it
+    const [datePart, timePart = '00:00'] = localIsoStr.split('T');
+    const [hh, mm] = timePart.split(':');
+    return `${datePart} ${hh}:${mm}:00`;
+}

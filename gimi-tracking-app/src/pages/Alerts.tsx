@@ -9,7 +9,7 @@ import { useAlertRuleStore } from '../store/alertRules';
 import type { AlertRuleType } from '../store/alertRules';
 import { useGeofenceStore } from '../store/geofences';
 import { useTranslation } from 'react-i18next';
-import { formatGimiTime, getLocalIsoString, formatToUtcApiTime } from '../utils/time';
+import { formatGimiTime, getLocalIsoString, formatToLocalApiTime } from '../utils/time';
 
 interface RawAlarm {
     alarmId?: string;
@@ -174,8 +174,8 @@ export default function Alerts() {
         setIsLoading(true);
         setError(null);
         try {
-            const begin = formatToUtcApiTime(startDate);
-            const end = formatToUtcApiTime(endDate);
+            const begin = formatToLocalApiTime(startDate);
+            const end = formatToLocalApiTime(endDate);
             let allAlarms: RawAlarm[] = [];
 
             if (selectedImei) {

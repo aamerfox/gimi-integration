@@ -124,6 +124,31 @@ export const useSimulationStore = create<SimulationState>()(
         }),
         {
             name: 'gimi-simulation-storage',
+            merge: (persistedState: any, currentState: SimulationState) => {
+                if (!persistedState) return currentState;
+                const mergedChildAccounts = [...(persistedState.simulatedChildAccounts || [])];
+                if (currentState.simulatedChildAccounts) {
+                    for (const defaultAcc of currentState.simulatedChildAccounts) {
+                        if (!mergedChildAccounts.some((acc: any) => acc.accountId === defaultAcc.accountId)) {
+                            mergedChildAccounts.push(defaultAcc);
+                        }
+                    }
+                }
+                const mergedLogs = [...(persistedState.simulatedLogs || [])];
+                if (currentState.simulatedLogs) {
+                    for (const defaultLog of currentState.simulatedLogs) {
+                        if (!mergedLogs.some((log: any) => log.id === defaultLog.id)) {
+                            mergedLogs.push(defaultLog);
+                        }
+                    }
+                }
+                return {
+                    ...currentState,
+                    ...persistedState,
+                    simulatedChildAccounts: mergedChildAccounts,
+                    simulatedLogs: mergedLogs,
+                };
+            }
         }
     )
 );

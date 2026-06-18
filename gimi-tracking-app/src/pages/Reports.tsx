@@ -6,10 +6,11 @@
  */
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useDeviceStore } from '../store/devices';
 import { gimiService } from '../services/gimi';
-import { formatGimiTime, getLocalIsoString, formatToUtcApiTime } from '../utils/time';
+import { formatGimiTime, getLocalIsoString, formatToUtcApiTime, formatToLocalApiTime } from '../utils/time';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line
@@ -30,6 +31,11 @@ interface TripData {
     duration: string; // e.g. "1h 15m"
     avgSpeed: number; // km/h
     maxSpeed: number; // km/h
+    startLat?: number;
+    startLng?: number;
+    endLat?: number;
+    endLng?: number;
+    imei?: string;
 }
 
 interface ParkingData {
@@ -39,8 +45,11 @@ interface ParkingData {
     endTime: string;
     duration: string;
     location: string;
+    lat?: number;
+    lng?: number;
     idleTimeSec: number;
-    accType?: 'on' | 'off';
+    accType?: 'on' | 'off' | 'derived';
+    imei?: string;
 }
 
 interface AlarmData {
@@ -50,6 +59,9 @@ interface AlarmData {
     type: string;
     speed: number;
     location: string;
+    lat?: number;
+    lng?: number;
+    imei?: string;
 }
 
 /**
@@ -69,6 +81,7 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 export default function Reports() {
     const { t, i18n } = useTranslation();
+    const navigate = useNavigate();
     const isRtl = i18n.dir() === 'rtl';
     const { accessToken, userId } = useAuthStore();
     const { devices } = useDeviceStore();
@@ -129,7 +142,8 @@ export default function Reports() {
     };
 
     // --- Generate Simulation Data ---
-    const getMockTrips = (deviceName: string, startStr: string, endStr: string): TripData[] => {
+    // --- Generate Simulation Data ---
+    const getMockTrips = (deviceName: string, imei: string, startStr: string, endStr: string): TripData[] => {
         const mockTrips: TripData[] = [];
         const start = new Date(startStr);
         const end = new Date(endStr);
@@ -153,6 +167,7 @@ export default function Reports() {
             mockTrips.push({
                 id: `trip-${i}`,
                 deviceName,
+                imei,
                 startTime: tripStart.toISOString().replace('T', ' ').slice(0, 19),
                 endTime: tripEnd.toISOString().replace('T', ' ').slice(0, 19),
                 startLocation: locations[i % locations.length],
@@ -161,12 +176,16 @@ export default function Reports() {
                 duration: `${hours}h ${mins}m`,
                 avgSpeed: Math.round(30 + Math.random() * 45),
                 maxSpeed: Math.round(80 + Math.random() * 40),
+                startLat: 24.702785 + (Math.random() - 0.5) * 0.1,
+                startLng: 46.722700 + (Math.random() - 0.5) * 0.1,
+                endLat: 24.702785 + (Math.random() - 0.5) * 0.1,
+                endLng: 46.722700 + (Math.random() - 0.5) * 0.1,
             });
         }
         return mockTrips;
     };
 
-    const getMockParking = (deviceName: string, startStr: string, endStr: string): ParkingData[] => {
+    const getMockParking = (deviceName: string, imei: string, startStr: string, endStr: string): ParkingData[] => {
         const mockParking: ParkingData[] = [];
         const start = new Date(startStr);
         const end = new Date(endStr);
@@ -191,18 +210,21 @@ export default function Reports() {
             mockParking.push({
                 id: `parking-${i}`,
                 deviceName,
+                imei,
                 startTime: stopStart.toISOString().replace('T', ' ').slice(0, 19),
                 endTime: stopEnd.toISOString().replace('T', ' ').slice(0, 19),
                 duration: `${hours}h ${mins}m`,
                 location: locations[i % locations.length] + (isAccOn ? (isRtl ? " (ACC ON - تشغيل)" : " (ACC ON)") : ""),
                 idleTimeSec: Math.floor(durationMs / 1000),
-                accType: isAccOn ? 'on' : 'off'
+                accType: isAccOn ? 'on' : 'off',
+                lat: 24.702785 + (Math.random() - 0.5) * 0.1,
+                lng: 46.722700 + (Math.random() - 0.5) * 0.1,
             });
         }
         return mockParking;
     };
 
-    const getMockAlarms = (deviceName: string, startStr: string, endStr: string): AlarmData[] => {
+    const getMockAlarms = (deviceName: string, imei: string, startStr: string, endStr: string): AlarmData[] => {
         const mockAlarms: AlarmData[] = [];
         const start = new Date(startStr);
         const end = new Date(endStr);
@@ -224,10 +246,13 @@ export default function Reports() {
             mockAlarms.push({
                 id: `alarm-${i}`,
                 deviceName,
+                imei,
                 time: alarmTime.toISOString().replace('T', ' ').slice(0, 19),
                 type: alarmTypes[i % alarmTypes.length],
                 speed: i % 2 === 0 ? Math.round(122 + Math.random() * 25) : 0,
                 location: locations[i % locations.length],
+                lat: 24.702785 + (Math.random() - 0.5) * 0.1,
+                lng: 46.722700 + (Math.random() - 0.5) * 0.1,
             });
         }
         return mockAlarms;
@@ -250,15 +275,16 @@ export default function Reports() {
             }
 
             if (simulationMode) {
+                const mockImei = singleImei || (devices[0]?.imei || '12345');
                 // Generate mock records
                 if (reportType === 'trips') {
-                    const mock = getMockTrips(targetDeviceName, startDate, endDate);
+                    const mock = getMockTrips(targetDeviceName, mockImei, startDate, endDate);
                     setTripsResult(mock);
                 } else if (reportType === 'parking') {
-                    const mock = getMockParking(targetDeviceName, startDate, endDate);
+                    const mock = getMockParking(targetDeviceName, mockImei, startDate, endDate);
                     setParkingResult(mock);
                 } else {
-                    const mock = getMockAlarms(targetDeviceName, startDate, endDate);
+                    const mock = getMockAlarms(targetDeviceName, mockImei, startDate, endDate);
                     setAlarmsResult(mock);
                 }
             } else {
@@ -277,6 +303,18 @@ export default function Reports() {
 
                     // Fetch trips report AND mileage API in parallel (mileage API = same source History page uses)
                     const imeiList = imeiParam.split(',').filter(Boolean);
+
+                    // Fetch trips report AND mileage API in parallel
+                    // IMPORTANT: Trips report uses UTC (jimi.open.platform.report.trips uses UTC).
+                    // Mileage API (jimi.device.track.mileage) uses LOCAL timezone of the account.
+                    // This is why the mileage API was returning 0 — we were sending UTC times.
+                    const mileageStartTime = formatToLocalApiTime(startDate); // LOCAL time for mileage API
+                    const mileageEndTime = formatToLocalApiTime(endDate);     // LOCAL time for mileage API
+
+                    console.log('[Reports] Fetching trips + mileage for IMEIs:', imeiList);
+                    console.log('[Reports] Trips API time (UTC):', startApiTime, '→', endApiTime);
+                    console.log('[Reports] Mileage API time (LOCAL):', mileageStartTime, '→', mileageEndTime);
+
                     const [res, ...mileageResults] = await Promise.all([
                         gimiService.getTripsReport(
                             accessToken,
@@ -285,12 +323,15 @@ export default function Reports() {
                             startApiTime,
                             endApiTime
                         ),
-                        // Call mileage API for each IMEI (same API the History page uses for accurate distance)
+                        // MILEAGE API: use LOCAL time (account timezone), not UTC
                         ...imeiList.map(imei =>
-                            gimiService.getTrackMileage(accessToken, imei, startApiTime, endApiTime)
+                            gimiService.getTrackMileage(accessToken, imei, mileageStartTime, mileageEndTime)
                                 .catch(() => null)
                         )
                     ]) as any[];
+
+                    console.log('[Reports] Raw trips response:', JSON.stringify(res));
+                    console.log('[Reports] Mileage results:', mileageResults.map((r, i) => ({ imei: imeiList[i], result: r })));
 
                     // Build a lookup of IMEI → mileage (km) from the mileage API
                     const mileageLookup: Record<string, number> = {};
@@ -298,102 +339,250 @@ export default function Reports() {
                         const mRes = mileageResults[idx];
                         if (!mRes) return;
                         let mileageVal = 0;
+                        // The mileage API can return in multiple formats — check all
                         if (Array.isArray(mRes?.result) && mRes.result.length > 0) {
-                            mileageVal = mRes.result[0].mileage;
+                            mileageVal = mRes.result[0].mileage ?? mRes.result[0].total_mileage ?? mRes.result[0].totalMileage ?? 0;
                         } else if (mRes?.result?.mileage !== undefined) {
                             mileageVal = mRes.result.mileage;
+                        } else if (mRes?.result?.total_mileage !== undefined) {
+                            mileageVal = mRes.result.total_mileage;
                         } else if (mRes?.data && Array.isArray(mRes.data) && mRes.data.length > 0) {
-                            mileageVal = mRes.data[0].mileage;
+                            mileageVal = mRes.data[0].mileage ?? mRes.data[0].total_mileage ?? 0;
+                        } else if (mRes?.data && typeof mRes.data === 'object' && !Array.isArray(mRes.data)) {
+                            // data is a plain object — log it fully to see its structure, then try all known fields
+                            console.log(`[Reports] Mileage API data object for ${imei}:`, JSON.stringify(mRes.data));
+                            mileageVal = mRes.data.mileage ?? mRes.data.total_mileage ?? mRes.data.totalMileage ??
+                                         mRes.data.total ?? mRes.data.distance ?? mRes.data.dis ?? 0;
                         }
-                        // Mileage API returns value in meters → convert to km
-                        mileageLookup[imei] = Number(mileageVal || 0) / 1000;
+                        // Mileage API always returns value in METERS → always divide by 1000 to get km
+                        // Do NOT use a heuristic here — the API contract is always meters
+                        const rawNum = Number(mileageVal || 0);
+                        const mileageKm = rawNum / 1000;
+                        mileageLookup[imei] = mileageKm;
+                        console.log(`[Reports] Mileage for ${imei}: raw=${mileageVal} meters → ${mileageKm.toFixed(3)} km`);
                     });
 
-                    // The API returns result (array of trips) or data (array of trips)
-                    const tripsList = (res as any)?.result || (res as any)?.data || [];
-                    const rawTrips = Array.isArray(tripsList) ? tripsList : (tripsList?.tripsData || tripsList?.dayList || []);
+                    // --- Parse the trips API response ---
+                    // The API returns result (array of trips) OR data.datDatas (trip records) OR data.dayList (device summaries)
+                    // data.dayList items are device HEADER rows (openFlag, imei, deviceName) — NOT individual trips
+                    // data.datDatas would be the actual per-trip records (often null on first load)
+                    // data.totalData.totalDis is the TOTAL distance for the period (authoritative)
+                    const resData = (res as any)?.data;
+                    const responseTotalDisKm = parseFloat(resData?.totalData?.totalDis || resData?.totalData?.total_dis || 0);
+                    const responseTotalTime = resData?.totalData?.totalTime || '';
+                    const responseTotalTrips = parseInt(resData?.totalData?.totalTrips || 0);
+                    console.log(`[Reports] Response summary: totalDis=${responseTotalDisKm} km, totalTrips=${responseTotalTrips}`);
+
+                    const tripsList = (res as any)?.result || resData || [];
+                    // Prefer datDatas (actual trip records) over dayList (device headers)
+                    let rawTrips: any[] = [];
+                    if (Array.isArray(tripsList)) {
+                        rawTrips = tripsList;
+                    } else if (Array.isArray(tripsList?.datDatas) && tripsList.datDatas.length > 0) {
+                        rawTrips = tripsList.datDatas; // actual trip records
+                    } else if (Array.isArray(tripsList?.tripsData) && tripsList.tripsData.length > 0) {
+                        rawTrips = tripsList.tripsData;
+                    } else if (Array.isArray(tripsList?.dayList) && tripsList.dayList.length > 0) {
+                        rawTrips = tripsList.dayList; // device headers — will be handled specially below
+                    }
+                    console.log(`[Reports] rawTrips count: ${rawTrips.length}, first item keys: ${rawTrips.length > 0 ? Object.keys(rawTrips[0]).join(', ') : 'none'}`);
 
                     if (rawTrips.length > 0) {
                         // Reverse-geocode start/end coordinates for each trip
                         const records: TripData[] = await Promise.all(
                             rawTrips.map(async (item: any, index: number) => {
                                 const itemImei = item.imei || item.deviceImei || item.device_imei || item.device_no || item.deviceNo;
-                                const targetImei = itemImei || (singleImei && singleImei !== 'all' ? singleImei : '');
+                                // FIX: Always resolve a targetImei. The trips API often omits 'imei' in each row.
+                                // Priority: item's own imei → the selected single imei → the first/only imei in the list
+                                const targetImei = itemImei
+                                    || (singleImei && singleImei !== 'all' ? singleImei : '')
+                                    || (imeiList.length === 1 ? imeiList[0] : '');
                                 const dev = devices.find(d => d.imei === (itemImei || targetImei));
                                 const devName = dev ? dev.deviceName : (itemImei || targetDeviceName);
+
+                                console.log(`[Reports] Trip item keys:`, Object.keys(item).join(', '));
+                                console.log(`[Reports] itemImei=${itemImei}, targetImei=${targetImei}, mileageLookup[targetImei]=${mileageLookup[targetImei]}`);
 
                                 const startLat = parseFloat(item.startLat || item.start_lat || 0);
                                 const startLng = parseFloat(item.startLng || item.start_lng || 0);
                                 const endLat = parseFloat(item.endLat || item.end_lat || 0);
                                 const endLng = parseFloat(item.endLng || item.end_lng || 0);
 
-                                // --- Distance resolution (multi-strategy, same as History page) ---
+                                // --- Distance resolution (multi-strategy) ---
                                 let distKm = 0;
 
-                                // Strategy 1: Use the trips API distance field
-                                const distRaw = parseFloat(item.distance || item.totalMileage || item.mileage || 0);
+                                // Timestamps — check item first, fall back to query range
+                                // dayList items (device headers) have NO startTime/endTime — use query range
+                                const rawStart = item.startTime || item.start_time || item.enterTime || item.enter_time || startApiTime;
+                                const rawEnd = item.endTime || item.end_time || item.exitTime || item.exit_time || endApiTime;
+                                const displayStart = item.startTime || item.start_time ? formatGimiTime(rawStart) : startDate.replace('T', ' ');
+                                const displayEnd = item.endTime || item.end_time ? formatGimiTime(rawEnd) : endDate.replace('T', ' ');
+                                const isDeviceHeaderRow = !item.startTime && !item.start_time && !item.endTime && !item.end_time;
+                                console.log(`[Reports] isDeviceHeaderRow=${isDeviceHeaderRow}, rawStart=${rawStart}, rawEnd=${rawEnd}`);
+
+                                // Strategy 1a: Use the trips API distance field in the item itself
+                                const distRaw = parseFloat(
+                                    item.distance ||
+                                    item.totalMileage || item.total_mileage ||
+                                    item.mileage ||
+                                    item.run_mileage || item.runMileage ||
+                                    item.totalDis || item.total_dis ||
+                                    item.dis ||
+                                    item.dist ||
+                                    0
+                                );
                                 if (distRaw > 0) {
-                                    // Heuristic: if value > 100, it's likely meters; otherwise km
-                                    distKm = distRaw > 100 ? distRaw / 1000 : distRaw;
+                                    // Heuristic: if value > 500, it's likely meters; otherwise km
+                                    distKm = distRaw > 500 ? distRaw / 1000 : distRaw;
+                                    console.log(`[Reports] Strategy 1a success: distRaw=${distRaw} → distKm=${distKm}`);
                                 }
 
-                                // Strategy 2: If trips API returned 0 and we only have 1 IMEI,
-                                // use the mileage API result (divided across trips proportionally)
+                                // ===================================================================
+                                // STRATEGY 0 (ULTIMATE PRIORITY): Use todayMileage from device store
+                                // This is the EXACT same number shown in TrackSolid's live widget.
+                                // The live widget reads it from jimi.user.device.location.list.
+                                // Our polling hook updates it every 15 seconds automatically.
+                                // Only available for today's date — historical dates must use other strategies.
+                                // ===================================================================
+                                const deviceObj = devices.find(d => d.imei === targetImei);
+                                const liveTodayKm = deviceObj
+                                    ? Number(deviceObj.todayMileage ?? deviceObj.today_mileage ?? deviceObj.todayDis ?? deviceObj.today_dis ?? deviceObj.runMileage ?? 0)
+                                    : 0;
+
+                                // Detect if this report covers "today" (same calendar day as now in local time)
+                                const todayStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD' in local tz
+                                const endDateStr = endDate.split('T')[0]; // from the picker, already local
+                                const startDateStr = startDate.split('T')[0];
+                                const isToday = endDateStr === todayStr && startDateStr === todayStr;
+
+                                if (liveTodayKm > 0 && isToday) {
+                                    distKm = liveTodayKm / Math.max(1, rawTrips.length);
+                                    console.log(`[Reports] Strategy 0 (todayMileage from live widget): ${liveTodayKm} / ${rawTrips.length} → ${distKm.toFixed(3)} km ✅`);
+                                } else {
+                                    console.log(`[Reports] Strategy 0 skip: liveTodayKm=${liveTodayKm}, isToday=${isToday} (startDate=${startDateStr}, endDate=${endDateStr}, todayStr=${todayStr})`);
+                                }
+
+                                // Strategy 2 (HIGHEST PRIORITY for device header rows):
+                                // Use the dedicated mileage API result — this is the SAME source as TrackSolid live widget.
+                                // Run this BEFORE totalDis (Strategy 1b) because the mileage API is more accurate.
                                 if (distKm <= 0 && targetImei && mileageLookup[targetImei] > 0) {
-                                    // For single trip, use full mileage; for multiple, distribute evenly as approximation
-                                    const tripsForImei = rawTrips.filter((t: any) =>
-                                        (t.imei || t.deviceImei || t.device_imei || t.device_no || t.deviceNo || singleImei) === targetImei
-                                    );
+                                    const tripsForImei = rawTrips.filter((t: any) => {
+                                        const tImei = t.imei || t.deviceImei || t.device_imei || t.device_no || t.deviceNo || targetImei;
+                                        return tImei === targetImei;
+                                    });
                                     distKm = mileageLookup[targetImei] / Math.max(1, tripsForImei.length);
+                                    console.log(`[Reports] Strategy 2 (mileage API WIN): ${mileageLookup[targetImei]} / ${tripsForImei.length} → ${distKm.toFixed(3)} km`);
                                 }
 
-                                // Timestamps for display and fallback
-                                const rawStart = item.startTime || item.start_time || item.enterTime || item.enter_time;
-                                const rawEnd = item.endTime || item.end_time || item.exitTime || item.exit_time;
-                                const displayStart = formatGimiTime(rawStart);
-                                const displayEnd = formatGimiTime(rawEnd);
+                                // Strategy 1b: For device header rows, use response totalData.totalDis
+                                // Only used when mileage API returned 0 (offline device, API error, etc.)
+                                if (distKm <= 0 && isDeviceHeaderRow && responseTotalDisKm > 0) {
+                                    distKm = responseTotalDisKm / Math.max(1, rawTrips.length);
+                                    console.log(`[Reports] Strategy 1b (totalDis fallback): ${responseTotalDisKm} / ${rawTrips.length} → ${distKm} km`);
+                                }
 
-                                // Strategy 3: Fetch track points and compute Haversine distance
-                                // Use the RAW UTC times (not display local times) for the API call
-                                if (distKm <= 0 && rawStart && rawEnd && targetImei) {
+                                // Strategy 3: Use the mileage API result for this IMEI
+                                // (only reached if mileage API also returned 0 — offline/no data)
+                                // This was originally Strategy 2 but moved down since mileage API now runs earlier
+                                if (distKm <= 0 && targetImei && mileageLookup[targetImei] > 0) {
+                                    // This path is only reached for NON-header rows where Strategy 2 didn't apply
+                                    const tripsForImei = rawTrips.filter((t: any) => {
+                                        const tImei = t.imei || t.deviceImei || t.device_imei || t.device_no || t.deviceNo || targetImei;
+                                        return tImei === targetImei;
+                                    });
+                                    distKm = mileageLookup[targetImei] / Math.max(1, tripsForImei.length);
+                                    console.log(`[Reports] Strategy 3 (mileage API for non-header): ${mileageLookup[targetImei]} / ${tripsForImei.length} → ${distKm.toFixed(3)} km`);
+                                }
+
+                                // Strategy 4: Compute distance from GPS track points using Haversine
+                                // Uses LOCAL time boundaries (same as Dashboard's 'Today's Mileage' calculation).
+                                // BEACON JUMP FILTER: If implied speed between two points exceeds 150 km/h,
+                                // the segment is a Bluetooth anchor jump (not real movement) and is skipped.
+                                // This prevents BEACON devices from showing unrealistic distances (e.g. 420 km).
+                                if (distKm <= 0 && targetImei) {
                                     try {
-                                        // rawStart/rawEnd are already in UTC format from the API (YYYY-MM-DD HH:mm:ss)
-                                        // Pass them directly — do NOT use displayStart/displayEnd which are local time
+                                        const trackBegin = mileageStartTime;
+                                        const trackEnd = mileageEndTime;
+                                        console.log(`[Reports] Strategy 4 (Haversine LOCAL): fetching track for ${targetImei} from ${trackBegin} to ${trackEnd}`);
                                         const trackRes = await gimiService.getTrackHistory(
                                             accessToken,
                                             targetImei,
-                                            rawStart,
-                                            rawEnd
+                                            trackBegin,
+                                            trackEnd
                                         ) as any;
 
                                         const pts = trackRes?.result || trackRes?.data || [];
                                         const points = Array.isArray(pts) ? pts : (pts?.list || []);
-                                        if (points.length > 0) {
+                                        console.log(`[Reports] Strategy 4: got ${points.length} track points`);
+                                        if (points.length > 1) {
                                             let calcMeters = 0;
+                                            let skipped = 0;
                                             let prevPoint: any = null;
+                                            let prevMs = 0;
+
+                                            // Helper to parse Gimi UTC time string → ms
+                                            const parsePtMs = (pt: any): number => {
+                                                const s: string = pt.gpsTime || pt.gps_time || pt.time || pt.positionTime || '';
+                                                if (!s) return 0;
+                                                const d = new Date(s.replace(' ', 'T') + (s.endsWith('Z') ? '' : 'Z'));
+                                                return isNaN(d.getTime()) ? 0 : d.getTime();
+                                            };
+
+                                            const MAX_SPEED_KMH = 150; // above this = BEACON anchor jump, not real movement
+
                                             for (const pt of points) {
-                                                if (!pt || pt.lat === undefined || pt.lng === undefined) continue;
-                                                const lat = Number(pt.lat);
-                                                const lng = Number(pt.lng);
+                                                if (!pt) continue;
+                                                const lat = Number(pt.lat ?? pt.latitude ?? 0);
+                                                const lng = Number(pt.lng ?? pt.lon ?? pt.longitude ?? 0);
                                                 if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) continue;
+
+                                                const currMs = parsePtMs(pt);
+
                                                 if (prevPoint) {
-                                                    calcMeters += haversineDistance(prevPoint.lat, prevPoint.lng, lat, lng);
+                                                    const distM = haversineDistance(prevPoint.lat, prevPoint.lng, lat, lng);
+                                                    const timeSec = currMs > 0 && prevMs > 0
+                                                        ? (currMs - prevMs) / 1000
+                                                        : 0;
+                                                    const speedKmh = timeSec > 0
+                                                        ? (distM / timeSec) * 3.6
+                                                        : 0;
+
+                                                    // Include segment only if within reasonable speed
+                                                    if (speedKmh <= MAX_SPEED_KMH || timeSec === 0) {
+                                                        calcMeters += distM;
+                                                    } else {
+                                                        skipped++;
+                                                        console.log(`[Reports] S4 skipped BEACON jump: ${distM.toFixed(0)}m in ${timeSec.toFixed(0)}s = ${speedKmh.toFixed(0)} km/h`);
+                                                    }
                                                 }
                                                 prevPoint = { lat, lng };
+                                                prevMs = currMs;
                                             }
                                             if (calcMeters > 0) {
                                                 distKm = calcMeters / 1000;
+                                                console.log(`[Reports] Strategy 4 success: ${calcMeters.toFixed(0)}m → ${distKm.toFixed(2)} km (${skipped} beacon jumps skipped)`);
                                             }
                                         }
                                     } catch (err) {
-                                        console.error("Failed to fetch track history fallback for trip:", err);
+                                        console.error('[Reports] Strategy 4 (Haversine) failed:', err);
                                     }
                                 }
 
-                                // Duration from seconds
-                                const durSec = parseInt(item.runTimeSecond || item.elapsed || item.run_time_second || 0);
-                                const hours = Math.floor(durSec / 3600);
-                                const mins = Math.floor((durSec % 3600) / 60);
+
+                                if (distKm <= 0) {
+                                    console.warn(`[Reports] All strategies returned 0 for item ${index}. Keys:`, Object.keys(item).join(', '));
+                                }
+
+                                // Duration — from seconds field or from totalTime if device header row
+                                const durSec = parseInt(item.runTimeSecond || item.elapsed || item.run_time_second || item.totalRunTime || item.total_run_time || 0);
+                                let hours = Math.floor(durSec / 3600);
+                                let mins = Math.floor((durSec % 3600) / 60);
+                                // For device header rows with no duration, use the response totalTime ("HH:MM:SS")
+                                if (durSec === 0 && isDeviceHeaderRow && responseTotalTime) {
+                                    const tParts = responseTotalTime.split(':').map(Number);
+                                    hours = tParts[0] || 0;
+                                    mins = tParts[1] || 0;
+                                }
 
                                 // Reverse geocode locations (with rate limiting)
                                 const delay = index * 200; // 200ms between requests to avoid rate limit
@@ -403,18 +592,23 @@ export default function Reports() {
                                     reverseGeocode(endLat, endLng),
                                 ]);
 
-                                return {
-                                    id: `trip-api-${index}`,
-                                    deviceName: devName,
-                                    startTime: displayStart,
-                                    endTime: displayEnd,
-                                    startLocation: startLoc,
-                                    endLocation: endLoc,
-                                    mileage: distKm,
-                                    duration: `${hours}h ${mins}m`,
-                                    avgSpeed: Math.round(parseFloat(item.averageSpeed || item.avgSpeed || item.average_speed || 0)),
-                                    maxSpeed: Math.round(parseFloat(item.maxSpeed || item.max_speed || 0)),
-                                };
+                                 return {
+                                     id: `trip-api-${index}`,
+                                     deviceName: devName,
+                                     startTime: displayStart,
+                                     endTime: displayEnd,
+                                     startLocation: startLoc,
+                                     endLocation: endLoc,
+                                     mileage: distKm,
+                                     duration: `${hours}h ${mins}m`,
+                                     avgSpeed: Math.round(parseFloat(item.averageSpeed || item.avgSpeed || item.average_speed || 0)),
+                                     maxSpeed: Math.round(parseFloat(item.maxSpeed || item.max_speed || 0)),
+                                     startLat,
+                                     startLng,
+                                     endLat,
+                                     endLng,
+                                     imei: itemImei || targetImei,
+                                 };
                             })
                         );
                         setTripsResult(records);
@@ -424,18 +618,19 @@ export default function Reports() {
                             const imei = imeiList[0];
                             const dev = devices.find(d => d.imei === imei);
                             const devName = dev ? dev.deviceName : imei;
-                            setTripsResult([{
-                                id: 'trip-mileage-fallback',
-                                deviceName: devName,
-                                startTime: startDate.replace('T', ' '),
-                                endTime: endDate.replace('T', ' '),
-                                startLocation: '—',
-                                endLocation: '—',
-                                mileage: mileageLookup[imei],
-                                duration: '—',
-                                avgSpeed: 0,
-                                maxSpeed: 0,
-                            }]);
+                             setTripsResult([{
+                                 id: 'trip-mileage-fallback',
+                                 deviceName: devName,
+                                 startTime: startDate.replace('T', ' '),
+                                 endTime: endDate.replace('T', ' '),
+                                 startLocation: '—',
+                                 endLocation: '—',
+                                 mileage: mileageLookup[imei],
+                                 duration: '—',
+                                 avgSpeed: 0,
+                                 maxSpeed: 0,
+                                 imei: imei,
+                             }]);
                         } else {
                             setTripsResult([]);
                         }
@@ -443,37 +638,146 @@ export default function Reports() {
                 } else if (reportType === 'parking') {
                     // Parking Report
                     if (!singleImei) {
-                        throw new Error("Tracksolid Parking Report requires selecting a specific device.");
+                        throw new Error(t('reports.parkingDeviceRequired'));
                     }
-                    const res = await gimiService.getParkingReport(
-                        accessToken,
-                        userId || '',
-                        singleImei,
-                        startApiTime,
-                        endApiTime,
-                        accType === 'all' ? 'off' : accType
-                    ) as any;
-                    let rawParking: any[] = [];
-                    if (res) {
-                        if (Array.isArray(res.result)) {
-                            rawParking = res.result;
-                        } else if (res.result && Array.isArray((res.result as any).rows)) {
-                            rawParking = (res.result as any).rows;
-                        } else if (res.result && Array.isArray((res.result as any).list)) {
-                            rawParking = (res.result as any).list;
-                        } else if (Array.isArray(res.data)) {
-                            rawParking = res.data;
-                        } else if (res.data && Array.isArray(res.data.rows)) {
-                            rawParking = res.data.rows;
-                        } else if (res.data && Array.isArray(res.data.list)) {
-                            rawParking = res.data.list;
+
+                    // Helper: parse Gimi UTC time string → milliseconds (same logic as formatGimiTime)
+                    const parseGimiMs = (t: any): number => {
+                        if (!t) return 0;
+                        const s = String(t).trim();
+                        const d = new Date(s.replace(' ', 'T') + (s.endsWith('Z') ? '' : 'Z'));
+                        return isNaN(d.getTime()) ? 0 : d.getTime();
+                    };
+
+                    const parkUtcStart = formatToUtcApiTime(startDate);
+                    const parkUtcEnd = formatToUtcApiTime(endDate);
+                    const parkLocalStart = formatToLocalApiTime(startDate);
+                    const parkLocalEnd = formatToLocalApiTime(endDate);
+                    console.log('[Reports] Parking UTC:', parkUtcStart, '→', parkUtcEnd);
+                    console.log('[Reports] Parking LOCAL:', parkLocalStart, '→', parkLocalEnd);
+
+                    // Try all 4 combinations: UTC+LOCAL × off+on
+                    // TrackSolid uses same API family as trips (UTC), but BEACON devices may need LOCAL
+                    // BEACON devices also have no ACC sensor, so both on/off must be tried
+                    const [r1, r2, r3, r4] = await Promise.all([
+                        gimiService.getParkingReport(accessToken, userId || '', singleImei, parkUtcStart, parkUtcEnd, 'off').catch(() => null),
+                        gimiService.getParkingReport(accessToken, userId || '', singleImei, parkUtcStart, parkUtcEnd, 'on').catch(() => null),
+                        gimiService.getParkingReport(accessToken, userId || '', singleImei, parkLocalStart, parkLocalEnd, 'off').catch(() => null),
+                        gimiService.getParkingReport(accessToken, userId || '', singleImei, parkLocalStart, parkLocalEnd, 'on').catch(() => null),
+                    ]) as any[];
+                    console.log('[Reports] Parking API UTC+off:', JSON.stringify(r1));
+                    console.log('[Reports] Parking API UTC+on:', JSON.stringify(r2));
+                    console.log('[Reports] Parking API LOCAL+off:', JSON.stringify(r3));
+                    console.log('[Reports] Parking API LOCAL+on:', JSON.stringify(r4));
+
+                    const extractParking = (res: any): any[] => {
+                        if (!res) return [];
+                        if (Array.isArray(res.result)) return res.result;
+                        if (res.result && Array.isArray((res.result as any).rows)) return (res.result as any).rows;
+                        if (res.result && Array.isArray((res.result as any).list)) return (res.result as any).list;
+                        if (res.result && Array.isArray((res.result as any).datDatas)) return (res.result as any).datDatas;
+                        if (Array.isArray(res.data)) return res.data;
+                        if (res.data && Array.isArray(res.data.rows)) return res.data.rows;
+                        if (res.data && Array.isArray(res.data.list)) return res.data.list;
+                        if (res.data && Array.isArray(res.data.datDatas)) return res.data.datDatas;
+                        if (res.data && Array.isArray(res.data.dayList)) return res.data.dayList;
+                        return [];
+                    };
+
+                    // Merge all results, deduplicating by startTime
+                    const seenKeys = new Set<string>();
+                    let rawParking: any[] = [...extractParking(r1), ...extractParking(r2), ...extractParking(r3), ...extractParking(r4)].filter(item => {
+                        const key = item.startTime || item.start_time || item.enterTime || JSON.stringify(item);
+                        if (seenKeys.has(key)) return false;
+                        seenKeys.add(key);
+                        return true;
+                    });
+
+                    console.log('[Reports] Parking API combined results:', rawParking.length, 'records');
+
+                    // FALLBACK: Derive stops from GPS track history when API returns nothing
+                    // This handles BEACON devices that don't generate parking events server-side.
+                    // A "stop" = device stays within 100m for >= 5 consecutive minutes.
+                    if (rawParking.length === 0) {
+                        console.log('[Reports] Parking API returned 0 — deriving stops from GPS track history');
+                        try {
+                            const trackRes = await gimiService.getTrackHistory(accessToken, singleImei, parkLocalStart, parkLocalEnd) as any;
+                            const pts = trackRes?.result || trackRes?.data || [];
+                            const points: any[] = Array.isArray(pts) ? pts : (pts?.list || []);
+                            console.log('[Reports] Track points for stop derivation:', points.length,
+                                points.length > 0 ? 'first keys: ' + Object.keys(points[0]).join(', ') : '');
+
+                            if (points.length > 1) {
+                                const MIN_STOP_METERS = 150;  // within 150m = same location
+                                const MIN_STOP_SECONDS = 5 * 60; // >= 5 minutes = a stop
+                                const derivedStops: any[] = [];
+
+                                // Find the time field name from the first point
+                                const getTime = (pt: any) =>
+                                    pt.gpsTime || pt.gps_time || pt.time || pt.positionTime || pt.position_time || '';
+
+                                let stopStart = points[0];
+                                let stopStartMs = parseGimiMs(getTime(points[0]));
+                                let stopAnchor = { lat: Number(points[0].lat || 0), lng: Number(points[0].lng || 0) };
+
+                                for (let i = 1; i < points.length; i++) {
+                                    const pt = points[i];
+                                    const lat = Number(pt.lat ?? 0);
+                                    const lng = Number(pt.lng ?? 0);
+                                    if (!lat || !lng) continue;
+
+                                    const distFromAnchor = haversineDistance(stopAnchor.lat, stopAnchor.lng, lat, lng);
+                                    if (distFromAnchor > MIN_STOP_METERS) {
+                                        // Device moved — record previous stop if long enough
+                                        const prevPt = points[i - 1];
+                                        const stopEndMs = parseGimiMs(getTime(prevPt));
+                                        const durationSec = (stopEndMs - stopStartMs) / 1000;
+                                        console.log(`[Reports] Stop candidate: ${Math.round(durationSec)}s from ${getTime(stopStart)} to ${getTime(prevPt)}`);
+
+                                        if (durationSec >= MIN_STOP_SECONDS && stopStartMs > 0 && stopEndMs > 0) {
+                                            derivedStops.push({
+                                                startTime: formatGimiTime(getTime(stopStart)),
+                                                endTime: formatGimiTime(getTime(prevPt)),
+                                                park_time_second: Math.round(durationSec),
+                                                address: '—',
+                                                lat: stopAnchor.lat,
+                                                lng: stopAnchor.lng,
+                                                _derived: true,
+                                            });
+                                        }
+                                        stopStart = pt;
+                                        stopStartMs = parseGimiMs(getTime(pt));
+                                        stopAnchor = { lat, lng };
+                                    }
+                                }
+                                // Check final stop (device might still be at last location)
+                                const lastPt = points[points.length - 1];
+                                const lastMs = parseGimiMs(getTime(lastPt));
+                                const finalDurSec = (lastMs - stopStartMs) / 1000;
+                                if (finalDurSec >= MIN_STOP_SECONDS && stopStartMs > 0 && lastMs > 0) {
+                                    derivedStops.push({
+                                        startTime: formatGimiTime(getTime(stopStart)),
+                                        endTime: formatGimiTime(getTime(lastPt)),
+                                        park_time_second: Math.round(finalDurSec),
+                                        address: '—',
+                                        lat: stopAnchor.lat,
+                                        lng: stopAnchor.lng,
+                                        _derived: true,
+                                    });
+                                }
+                                console.log('[Reports] Derived', derivedStops.length, 'stops from', points.length, 'track points');
+                                rawParking = derivedStops;
+                            }
+                        } catch (err) {
+                            console.error('[Reports] Track history stop derivation failed:', err);
                         }
                     }
 
                     if (rawParking.length > 0) {
                         const records = rawParking.map((item: any, index: number) => {
-                            const seconds = parseInt(item.park_time_second || item.durSecond || item.dur_second || item.parkTimeSecond || 0);
-                            let durationStr = item.park_time || item.duration || '';
+                            // Use Math.round(Number()) instead of parseInt() — handles float seconds correctly
+                            const seconds = Math.round(Number(item.park_time_second || item.durSecond || item.dur_second || item.parkTimeSecond || 0));
+                            let durationStr = (!item._derived && (item.park_time || item.duration)) ? (item.park_time || item.duration) : '';
                             if (!durationStr && seconds > 0) {
                                 const hours = Math.floor(seconds / 3600);
                                 const mins = Math.floor((seconds % 3600) / 60);
@@ -481,21 +785,71 @@ export default function Reports() {
                             }
                             if (!durationStr) durationStr = '—';
 
+                            // Apply minStopDuration filter (in minutes)
+                            if (minStopDuration > 0 && seconds < minStopDuration * 60) return null;
+
+                            // Format times: API records use formatGimiTime (UTC→local); derived records are pre-formatted
+                            const displayStart = item._derived
+                                ? (item.startTime || '—')
+                                : formatGimiTime(item.startTime || item.start_time) || '—';
+                            const displayEnd = item._derived
+                                ? (item.endTime || '—')
+                                : formatGimiTime(item.endTime || item.end_time) || '—';
+
                             return {
-                                id: `park-api-${index}`,
+                                id: `park-${index}`,
                                 deviceName: targetDeviceName,
-                                startTime: item.startTime || item.start_time || '—',
-                                endTime: item.endTime || item.end_time || '—',
+                                startTime: displayStart,
+                                endTime: displayEnd,
                                 duration: durationStr,
                                 location: item.address || item.addr || '—',
+                                lat: Number(item.lat || item.latitude || 0) || undefined,
+                                lng: Number(item.lng || item.lon || item.longitude || 0) || undefined,
                                 idleTimeSec: seconds,
-                                accType: accType === 'all' ? 'off' : accType
-                            };
-                        });
+                                accType: item._derived ? 'derived' : (accType === 'all' ? 'off' : accType),
+                                imei: singleImei || item.imei || item.deviceImei || item.device_imei || (devices.find(d => d.deviceName === targetDeviceName)?.imei) || '',
+                            } as ParkingData;
+                        }).filter(Boolean) as ParkingData[];
+                        console.log('[Reports] setParkingResult called with', records.length, 'records');
                         setParkingResult(records);
+
+                        // Reverse geocode stops that have coordinates but no address
+                        // Uses OpenStreetMap Nominatim (free, no API key needed)
+                        // Rate limit: max 1 req/sec — fills addresses progressively in background
+                        const geocodeInBackground = async (initialRecords: ParkingData[]) => {
+                            const working = [...initialRecords];
+                            for (let i = 0; i < working.length; i++) {
+                                const rec = working[i];
+                                if (rec.lat && rec.lng && (!rec.location || rec.location === '—')) {
+                                    try {
+                                        const geoRes = await fetch(
+                                            `https://nominatim.openstreetmap.org/reverse?lat=${rec.lat}&lon=${rec.lng}&format=json&accept-language=en`,
+                                            { headers: { 'Accept-Language': 'en' } }
+                                        );
+                                        const geoData = await geoRes.json();
+                                        if (geoData?.address) {
+                                            const a = geoData.address;
+                                            // Build concise address: Road/Suburb, District, City
+                                            const parts = [
+                                                a.road || a.pedestrian || a.footway || a.path || '',
+                                                a.suburb || a.neighbourhood || a.quarter || '',
+                                                a.city || a.town || a.village || a.county || '',
+                                            ].filter(Boolean);
+                                            working[i] = { ...rec, location: parts.join(', ') || geoData.display_name?.split(',').slice(0, 2).join(',') || '—' };
+                                            // Update state progressively so user sees addresses fill in
+                                            setParkingResult([...working]);
+                                        }
+                                    } catch (_) { /* ignore geocoding errors silently */ }
+                                    // Nominatim rate limit: 1 req/sec
+                                    await new Promise(r => setTimeout(r, 1100));
+                                }
+                            }
+                        };
+                        geocodeInBackground(records);
                     } else {
                         setParkingResult([]);
                     }
+
                 } else {
                     // Alarms Report
                     const imeiParam = singleImei || devices.map(d => d.imei).join(',');
@@ -530,6 +884,9 @@ export default function Reports() {
                                 type: item.alarm_type_name || item.alarmTypeName || item.alarm_type || item.alarmType || item.alertType || item.type || '—',
                                 speed: parseFloat(item.speed || 0),
                                 location: item.address || item.addr || (item.lat && item.lng ? `Lat: ${item.lat}, Lng: ${item.lng}` : '—'),
+                                lat: parseFloat(item.lat || item.latitude || 0),
+                                lng: parseFloat(item.lng || item.longitude || 0),
+                                imei: item.imei || singleImei || '',
                             };
                         });
                         setAlarmsResult(records);
@@ -565,7 +922,8 @@ export default function Reports() {
 
     const filteredParking = useMemo(() => {
         return parkingResult.filter(item => {
-            if (accType !== 'all' && item.accType && item.accType !== accType) {
+            // Don't filter out derived stops (BEACON GPS fallback) by acc_type — they have no ignition state
+            if (accType !== 'all' && item.accType && item.accType !== 'derived' && item.accType !== accType) {
                 return false;
             }
             const durationMins = item.idleTimeSec / 60;
@@ -738,14 +1096,16 @@ export default function Reports() {
                 t('reports.table.startTime'),
                 t('reports.table.endTime'),
                 t('reports.table.duration'),
-                t('reports.table.location')
+                t('reports.table.location'),
+                'Coordinates'
             ];
             rows = (filteredTableData as ParkingData[]).map(p => [
                 p.deviceName,
                 p.startTime,
                 p.endTime,
                 p.duration,
-                p.location
+                p.location,
+                (p.lat && p.lng) ? `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}` : '—'
             ]);
         } else {
             headers = [
@@ -1259,6 +1619,7 @@ export default function Reports() {
                                                 <th style={{ padding: '12px 20px', color: 'var(--text-secondary)', fontWeight: 600 }}>{t('reports.table.endTime')}</th>
                                                 <th style={{ padding: '12px 20px', color: 'var(--text-secondary)', fontWeight: 600 }}>{t('reports.table.duration')}</th>
                                                 <th style={{ padding: '12px 20px', color: 'var(--text-secondary)', fontWeight: 600 }}>{t('reports.table.location')}</th>
+                                                <th style={{ padding: '12px 20px', color: 'var(--text-secondary)', fontWeight: 600 }}>Coordinates</th>
                                             </>
                                         )}
                                         {reportType === 'alarms' && (
@@ -1273,13 +1634,72 @@ export default function Reports() {
                                 <tbody>
                                     {paginatedData.map((row) => (
                                         <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.15s' }} className="hover:bg-white/[0.02]">
-                                            <td style={{ padding: '12px 20px', fontWeight: 600 }}>{row.deviceName}</td>
+                                            <td style={{ padding: '12px 20px', fontWeight: 600 }}>
+                                                {row.imei ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            const dev = devices.find(d => d.imei === row.imei);
+                                                            if (dev) {
+                                                                useDeviceStore.getState().selectDevice(dev);
+                                                                navigate('/');
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            padding: 0,
+                                                            color: 'var(--accent)',
+                                                            cursor: 'pointer',
+                                                            fontWeight: 600,
+                                                            textAlign: isRtl ? 'right' : 'left',
+                                                            fontSize: 'inherit',
+                                                            fontFamily: 'inherit'
+                                                        }}
+                                                        className="hover:underline"
+                                                        title={isRtl ? "عرض على الخريطة المباشرة" : "Show on Live Map"}
+                                                    >
+                                                        {row.deviceName}
+                                                    </button>
+                                                ) : (
+                                                    row.deviceName
+                                                )}
+                                            </td>
                                             {reportType === 'trips' && (
                                                 <>
                                                     <td style={{ padding: '12px 20px', color: 'var(--text-secondary)' }}>{(row as TripData).startTime}</td>
                                                     <td style={{ padding: '12px 20px', color: 'var(--text-secondary)' }}>{(row as TripData).endTime}</td>
-                                                    <td style={{ padding: '12px 20px' }}>{(row as TripData).startLocation}</td>
-                                                    <td style={{ padding: '12px 20px' }}>{(row as TripData).endLocation}</td>
+                                                    <td style={{ padding: '12px 20px' }}>
+                                                        {(row as TripData).startLat && (row as TripData).startLng ? (
+                                                            <a
+                                                                href={`https://www.google.com/maps?q=${(row as TripData).startLat},${(row as TripData).startLng}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
+                                                                className="hover:underline hover:text-[var(--accent)]"
+                                                                title={isRtl ? "عرض البداية على خريطة جوجل" : "Show start on Google Maps"}
+                                                            >
+                                                                📍 {(row as TripData).startLocation}
+                                                            </a>
+                                                        ) : (
+                                                            (row as TripData).startLocation
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: '12px 20px' }}>
+                                                        {(row as TripData).endLat && (row as TripData).endLng ? (
+                                                            <a
+                                                                href={`https://www.google.com/maps?q=${(row as TripData).endLat},${(row as TripData).endLng}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
+                                                                className="hover:underline hover:text-[var(--accent)]"
+                                                                title={isRtl ? "عرض النهاية على خريطة جوجل" : "Show end on Google Maps"}
+                                                            >
+                                                                📍 {(row as TripData).endLocation}
+                                                            </a>
+                                                        ) : (
+                                                            (row as TripData).endLocation
+                                                        )}
+                                                    </td>
                                                     <td style={{ padding: '12px 20px', color: 'var(--accent)', fontWeight: 600 }}>{(row as TripData).mileage.toFixed(1)} km</td>
                                                     <td style={{ padding: '12px 20px', color: 'var(--text-secondary)' }}>{(row as TripData).duration}</td>
                                                 </>
@@ -1289,7 +1709,35 @@ export default function Reports() {
                                                     <td style={{ padding: '12px 20px', color: 'var(--text-secondary)' }}>{(row as ParkingData).startTime}</td>
                                                     <td style={{ padding: '12px 20px', color: 'var(--text-secondary)' }}>{(row as ParkingData).endTime}</td>
                                                     <td style={{ padding: '12px 20px', color: 'var(--warning)', fontWeight: 600 }}>{(row as ParkingData).duration}</td>
-                                                    <td style={{ padding: '12px 20px' }}>{(row as ParkingData).location}</td>
+                                                    <td style={{ padding: '12px 20px' }}>
+                                                        {(row as ParkingData).lat && (row as ParkingData).lng ? (
+                                                            <a
+                                                                href={`https://www.google.com/maps?q=${(row as ParkingData).lat},${(row as ParkingData).lng}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
+                                                                className="hover:underline hover:text-[var(--accent)]"
+                                                                title={isRtl ? "عرض على خريطة جوجل" : "Show on Google Maps"}
+                                                            >
+                                                                📍 {(row as ParkingData).location}
+                                                            </a>
+                                                        ) : (
+                                                            (row as ParkingData).location
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: '12px 20px' }}>
+                                                        {(row as ParkingData).lat && (row as ParkingData).lng ? (
+                                                            <a
+                                                                href={`https://www.google.com/maps?q=${(row as ParkingData).lat},${(row as ParkingData).lng}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ color: 'var(--accent)', fontFamily: 'monospace', fontSize: '12px', textDecoration: 'none' }}
+                                                                title="Open in Google Maps"
+                                                            >
+                                                                📍 {(row as ParkingData).lat!.toFixed(5)}, {(row as ParkingData).lng!.toFixed(5)}
+                                                            </a>
+                                                        ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                                    </td>
                                                 </>
                                             )}
                                             {reportType === 'alarms' && (
@@ -1306,7 +1754,22 @@ export default function Reports() {
                                                             {(row as AlarmData).type}
                                                         </span>
                                                     </td>
-                                                    <td style={{ padding: '12px 20px', color: 'var(--text-secondary)' }}>{(row as AlarmData).location}</td>
+                                                    <td style={{ padding: '12px 20px' }}>
+                                                        {(row as AlarmData).lat && (row as AlarmData).lng ? (
+                                                            <a
+                                                                href={`https://www.google.com/maps?q=${(row as AlarmData).lat},${(row as AlarmData).lng}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}
+                                                                className="hover:underline hover:text-[var(--accent)]"
+                                                                title={isRtl ? "عرض على خريطة جوجل" : "Show on Google Maps"}
+                                                            >
+                                                                📍 {(row as AlarmData).location}
+                                                            </a>
+                                                        ) : (
+                                                            (row as AlarmData).location
+                                                        )}
+                                                    </td>
                                                 </>
                                             )}
                                         </tr>

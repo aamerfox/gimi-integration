@@ -17,7 +17,7 @@ import { Feather } from '@expo/vector-icons';
 
 function getBaseUrl(): string {
     // Provide the live production server URL
-    const PRODUCTION_URL = 'https://saudiex-tracker-256825749353.europe-west10.run.app';
+    const PRODUCTION_URL = 'http://84.8.118.119';
 
     if (typeof window !== 'undefined' && window.location?.origin) {
         // Only use the window origin if it's not localhost/local IP

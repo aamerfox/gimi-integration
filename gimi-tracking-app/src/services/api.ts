@@ -23,7 +23,7 @@ export const api = axios.create({
 
 // Helper to generate signature
 // Sign = MD5(app_secret + sorted(key+value) + app_secret).toUpperCase()
-export const generateSignature = (params: Record<string, string | number | boolean>): string => {
+export const generateSignature = (params: Record<string, any>): string => {
     const sortedKeys = Object.keys(params).sort();
 
     let paramString = APP_SECRET;
@@ -55,7 +55,13 @@ api.interceptors.request.use((config) => {
     // The Gimi API sends everything as query params for both GET and POST
     // We merge common params + the data object passed via api.post('', { ... })
     const privateParams = config.data || config.params || {};
-    const allParams = { ...commonParams, ...privateParams };
+    
+    // Clean private parameters of undefined and null values to avoid signature mismatches
+    const cleanedPrivate = Object.fromEntries(
+        Object.entries(privateParams).filter(([_, v]) => v !== undefined && v !== null)
+    );
+
+    const allParams = { ...commonParams, ...cleanedPrivate };
 
     // Generate signature
     const sign = generateSignature(allParams);

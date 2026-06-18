@@ -1,11 +1,11 @@
 ================================================================
   SaudiEx Tracker - GIMI API Full Integration Test
-  UTC Time  : 2026-06-08 14:34:01
-  Account   : GBH2025
+  UTC Time  : 2026-06-17 15:21:42
+  Account   : celorvx
 ================================================================
 
 --- T01: Authentication ---
-  https://eu-open.tracksolidpro.com/route/rest  ->  code=1002  msg=非法用户
+  https://eu-open.tracksolidpro.com/route/rest  ->  code=undefined  msg=No message available
   https://hk-open.tracksolidpro.com/route/rest  ->  code=1001  msg=缺少AppKey参数或无效的AppKey
   http://open.10000track.com/route/rest  ->  code=1001  msg=缺少AppKey参数或无效的AppKey
 [FAIL] [T01] Authentication (jimi.oauth.token.get)

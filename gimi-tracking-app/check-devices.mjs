@@ -35,7 +35,8 @@ async function main() {
 
     // Login
     const login = await call('jimi.oauth.token.get', { user_id: ACCOUNT, user_pwd_md5: PASSWORD_MD5, expires_in: 7200 });
-    const token = login.result.accessToken;
+    console.log("Login response:", JSON.stringify(login));
+    const token = login.result?.accessToken;
     L(`Login: OK (token received)`);
 
     // Device list with full details

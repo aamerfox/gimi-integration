@@ -110,7 +110,9 @@
         "live": "Live",
         "tracks": "Tracks",
         "share": "Share",
-        "speed": "Speed"
+        "speed": "Speed",
+        "ringTag": "Ring Tag",
+        "ringSuccess": "Sent ring command to {{name}}"
     },
     "reports": {
         "title": "Reports & Analytics",
@@ -148,6 +150,7 @@
         },
         "noData": "No data found for the selected filters.",
         "loading": "Generating report from Tracksolid API...",
+        "parkingDeviceRequired": "Parking Report requires selecting a specific device.",
         "filters": {
             "accType": "Ignition Status (ACC)",
             "accOn": "ACC ON (Running)",
@@ -165,5 +168,62 @@
         "delete": "Delete Geofence",
         "radius": "Radius",
         "name": "Geofence Name"
+    },
+    "history": {
+        "title": "Track History",
+        "from": "From",
+        "to": "To",
+        "parkingTime": "Parking Time",
+        "loadTrack": "Load Track",
+        "totalDistance": "Total Distance",
+        "avgSpeed": "Avg Speed",
+        "startPoint": "Start point",
+        "endPoint": "End point",
+        "viewDetailedTables": "View Detailed Tables",
+        "stopsCount_one": "1 Stop",
+        "stopsCount_other": "{{count}} Stops",
+        "playbackPoints": "Playback Points",
+        "stopsList": "Stops List ({{count}})",
+        "noStops": "No stops detected for this period",
+        "noTrackData": "No track data found for this period",
+        "failedToLoad": "Failed to load track",
+        "pointNo": "No.",
+        "positioningTime": "Positioning Time",
+        "ignition": "Ignition",
+        "coordinates": "Coordinates",
+        "speed": "Speed(km/h)",
+        "startTime": "Start Time",
+        "endTime": "End Time",
+        "duration": "Duration",
+        "address": "Address",
+        "locate": "Locate",
+        "stop": "Stop",
+        "time": "Time",
+        "toLabel": "to",
+        "on": "ON",
+        "off": "OFF",
+        "none": "None",
+        "speedUnit": "km/h",
+        "distanceUnit": "km",
+        "parkingTimeOptions": {
+            "all": "0 Minutes (All Stops)",
+            "1min": "1 Minute",
+            "3min": "3 Minutes",
+            "5min": "5 Minutes",
+            "10min": "10 Minutes",
+            "30min": "30 Minutes"
+        },
+        "durationFormat": {
+            "hoursMins": "{{hours}}h {{mins}}m",
+            "mins": "{{mins}} mins",
+            "secs": "{{secs}}s"
+        },
+        "positionMode": "Positioning Mode",
+        "positionModeOptions": {
+            "all": "All (All Positioning, Including Inaccurate)",
+            "optimized": "Optimized (Eliminate Unconventional Jumps)",
+            "precise": "Precise (Only Precise GPS, Eliminate Drift)"
+        },
+        "filteredNoDataHint": "All track points were filtered by the current Positioning Mode. Try switching to 'Optimized' or 'All' to view cellular/Wi-Fi positioning points."
     }
 }

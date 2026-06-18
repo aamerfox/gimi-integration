@@ -19,6 +19,10 @@ export default defineConfig({
         secure: true,
         rewrite: (p) => p.replace(/^\/api/, '/route/rest'),
       },
+      '/tag/v1': {
+        target: 'http://84.8.100.152:9998',
+        changeOrigin: true,
+      },
     },
   },
 });

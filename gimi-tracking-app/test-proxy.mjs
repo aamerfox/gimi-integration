@@ -4,7 +4,7 @@ const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
 const APP_SECRET = 'd1bf0654370a4a148abacd02abe8146e';
 const PROXY_URL = 'https://saudiex-tracker-256825749353.europe-west10.run.app/token';
 
-const ACCOUNT = 'GBH2025';
+const ACCOUNT = 'celorvx';
 const PASSWORD_RAW = '4a026bcce174570b8b0411600017f2f2';
 
 function getUTCTimestamp() {

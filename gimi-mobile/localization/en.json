@@ -38,7 +38,14 @@
         "to": "To",
         "loadTrack": "Load Track",
         "pointsLoaded": "points loaded",
-        "maxDaysExceeded": "Maximum 7 days of history can be loaded at once."
+        "maxDaysExceeded": "Maximum 7 days of history can be loaded at once.",
+        "positionMode": "Positioning Mode",
+        "positionModeOptions": {
+            "all": "All (All Positioning, Including Inaccurate)",
+            "optimized": "Optimized (Eliminate Unconventional Jumps)",
+            "precise": "Precise (Only Precise GPS, Eliminate Drift)"
+        },
+        "filteredNoDataHint": "All track points were filtered by the current Positioning Mode. Try switching to 'Optimized' or 'All' to view cellular/Wi-Fi positioning points."
     },
     "alertsFilters": {
         "all": "All",
@@ -81,7 +88,10 @@
     "map": {
         "title": "Live Tracking",
         "selectDevice": "Select a device to view details",
-        "noDevicesLocation": "No devices with location data found"
+        "noDevicesLocation": "No devices with location data found",
+        "ringTag": "Ring Tag",
+        "ringSuccess": "Sent ring command to {{name}}",
+        "ringFail": "Failed to send ring command"
     },
     "devices": {
         "title": "Device Management",

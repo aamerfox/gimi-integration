@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { validateShareUrl } from '../services/share';
+import { validateShareUrl, type ShareParams } from '../services/share';
 import MD5 from 'crypto-js/md5';
 
 const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
@@ -95,6 +95,8 @@ export default function ViewShare() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [deviceName, setDeviceName] = useState<string>('');
+    const [shareParams, setShareParams] = useState<ShareParams | null>(null);
+    const [ringing, setRinging] = useState(false);
     const { t } = useTranslation();
 
     // Fetch live location via `gimi.device.location.get` or by tricking the other list API
@@ -110,8 +112,10 @@ export default function ViewShare() {
         }
 
         setDeviceName(params.name);
+        setShareParams(params);
 
         const streetLayer = L.tileLayer(GOOGLE_STREET_URL, { attribution: GOOGLE_STREET_ATTR, maxZoom: 18 });
+
         const satelliteLayer = L.tileLayer(GOOGLE_SATELLITE_URL, { attribution: GOOGLE_SATELLITE_ATTR, maxZoom: 18 });
         const hybridLayer = L.tileLayer(GOOGLE_HYBRID_URL, { attribution: GOOGLE_HYBRID_ATTR, maxZoom: 18 });
 
@@ -225,6 +229,31 @@ export default function ViewShare() {
         };
     }, [searchParams, t]);
 
+    const handleRingTag = async () => {
+        if (!shareParams) return;
+        setRinging(true);
+        try {
+            const data = await fetchGimiApi('jimi.open.instruction.send', {
+                access_token: shareParams.tok,
+                imei: shareParams.imei,
+                inst_param_json: JSON.stringify({
+                    inst_id: '0',
+                    inst_template: 'FIND,3000#',
+                    params: []
+                })
+            });
+            if (data && data.code === 0) {
+                alert(t('deviceDetails.ringSuccess', { name: shareParams.name }));
+            } else {
+                throw new Error(data.message || t('common.error'));
+            }
+        } catch (err: any) {
+            alert(err.message || t('common.error'));
+        } finally {
+            setRinging(false);
+        }
+    };
+
     if (error) {
         return (
             <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0e1a' }}>
@@ -267,10 +296,36 @@ export default function ViewShare() {
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{deviceName || t('common.loading')}</div>
                 </div>
 
-                {loading && (
+                {loading ? (
                     <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontSize: '12px', fontWeight: 600 }}>
                         <div className="animate-pulse">{t('common.connecting') || 'Connecting...'}</div>
                     </div>
+                ) : (
+                    <button
+                        onClick={handleRingTag}
+                        disabled={ringing}
+                        className="sx-btn sx-btn-ghost sx-btn-sm"
+                        style={{
+                            marginInlineStart: 'auto',
+                            justifyContent: 'center',
+                            fontSize: '11px',
+                            padding: '6px 10px',
+                            color: 'var(--accent)',
+                            borderColor: 'var(--border-accent)',
+                            background: 'var(--accent-dim)',
+                            borderRadius: 'var(--radius-md)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={ringing ? 'animate-bounce' : ''}>
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        {ringing ? t('common.loading') : t('deviceDetails.ringTag')}
+                    </button>
                 )}
             </div>
 

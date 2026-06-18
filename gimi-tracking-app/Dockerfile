@@ -6,7 +6,7 @@ RUN npm ci
 
 COPY . .
 
-# CACHE BUST: 2026-06-11T14:45
+# CACHE BUST: 2026-06-17T18:50
 RUN npm run build
 
 FROM nginx:stable-alpine
@@ -14,9 +14,9 @@ FROM nginx:stable-alpine
 # Copy built assets to Nginx default public folder
 COPY --from=builder /app/dist /var/www/html
 
-# If custom nginx config exists for GCP
-COPY gcp-nginx-utf8.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]

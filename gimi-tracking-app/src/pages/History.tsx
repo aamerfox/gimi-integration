@@ -8,7 +8,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapZoomControls from '../components/MapZoomControls';
 import { useTranslation } from 'react-i18next';
-import { formatGimiTime, formatGimiTimeOnly, getLocalIsoString, formatToUtcApiTime } from '../utils/time';
+import { formatGimiTime, formatGimiTimeOnly, getLocalIsoString, formatToLocalApiTime } from '../utils/time';
 
 const GOOGLE_STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
 const GOOGLE_STREET_ATTR = 'Map data &copy; <a href="https://www.google.com/maps">Google</a>';
@@ -24,6 +24,8 @@ interface TrackPoint {
     gpsTime: string;
     direction: number;
     accStatus?: string;
+    posType?: string;
+    confidence?: number;
 }
 
 interface StopPoint {
@@ -59,12 +61,15 @@ export default function History() {
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
     const [track, setTrack] = useState<TrackPoint[]>([]);
+    const [rawTrack, setRawTrack] = useState<TrackPoint[]>([]);
+    const [positionMode, setPositionMode] = useState<'all' | 'optimized' | 'precise'>('all');
     const [stops, setStops] = useState<StopPoint[]>([]);
     const [apiStops, setApiStops] = useState<StopPoint[]>([]);
     const [parkingThreshold, setParkingThreshold] = useState<number>(3);
     const [activeTab, setActiveTab] = useState<'points' | 'stops'>('points');
     const [averageSpeed, setAverageSpeed] = useState(0);
     const [totalDistance, setTotalDistance] = useState(0);
+    const [apiMileage, setApiMileage] = useState(0);
     const [showPointsList, setShowPointsList] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -93,6 +98,73 @@ export default function History() {
     const polylineRef = useRef<L.Polyline | null>(null);
     const markerRef = useRef<L.Marker | null>(null);
     const layersGroupRef = useRef<L.LayerGroup | null>(null);
+
+    const filterTrackPoints = useCallback((points: TrackPoint[], mode: 'all' | 'optimized' | 'precise') => {
+        if (points.length === 0) return [];
+        if (mode === 'all') return points;
+
+        const filtered: TrackPoint[] = [];
+        const MAX_SPEED_KMH = mode === 'precise' ? 100 : 150;
+
+        let prevPoint: TrackPoint | null = null;
+        let prevMs = 0;
+
+        for (const pt of points) {
+            if (!pt || pt.lat === undefined || pt.lng === undefined) continue;
+            const lat = Number(pt.lat);
+            const lng = Number(pt.lng);
+            if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) continue;
+
+            // Filter by confidence if present (common for smart tags/IoT devices)
+            if (pt.confidence !== undefined) {
+                if (mode === 'precise' && pt.confidence < 3) {
+                    continue;
+                }
+                if (mode === 'optimized' && pt.confidence < 2) {
+                    continue;
+                }
+            }
+
+            if (mode === 'precise') {
+                const posType = (typeof pt.posType === 'string' ? pt.posType : String(pt.posType || '')).toUpperCase();
+                const isGps = 
+                    posType.includes('GPS') || 
+                    posType.includes('BDS') || 
+                    posType.includes('GLONASS') || 
+                    posType.includes('GLO') || 
+                    posType.includes('GALILEO') || 
+                    posType.includes('GNSS') || 
+                    posType === '0' || 
+                    posType === '4' || 
+                    posType === '5' || 
+                    posType === '6';
+                if (!isGps) {
+                    continue;
+                }
+            }
+
+            const s = pt.gpsTime || '';
+            const currMs = s
+                ? (() => { const d = new Date(s.replace(' ', 'T') + (s.endsWith('Z') ? '' : 'Z')); return isNaN(d.getTime()) ? 0 : d.getTime(); })()
+                : 0;
+
+            if (prevPoint) {
+                const distM = haversineDistance(prevPoint.lat, prevPoint.lng, lat, lng);
+                const timeSec = currMs > 0 && prevMs > 0 ? (currMs - prevMs) / 1000 : 0;
+                const speedKmh = timeSec > 0 ? (distM / timeSec) * 3.6 : 0;
+
+                if (timeSec > 0 && speedKmh > MAX_SPEED_KMH) {
+                    continue;
+                }
+            }
+
+            filtered.push(pt);
+            prevPoint = pt;
+            prevMs = currMs;
+        }
+
+        return filtered;
+    }, []);
 
     // Set default dates
     useEffect(() => {
@@ -147,13 +219,19 @@ export default function History() {
 
     const drawTrack = useCallback((points: TrackPoint[], activeStops: StopPoint[]) => {
         const map = mapRef.current;
-        if (!map || points.length === 0) return;
+        if (!map) return;
 
         // Clear previous layers/markers
         if (layersGroupRef.current) {
             layersGroupRef.current.clearLayers();
         } else {
             layersGroupRef.current = L.layerGroup().addTo(map);
+        }
+
+        if (points.length === 0) {
+            polylineRef.current = null;
+            markerRef.current = null;
+            return;
         }
 
         const lg = layersGroupRef.current;
@@ -175,7 +253,7 @@ export default function History() {
             fillOpacity: 1,
             color: '#fff',
             weight: 2,
-        }).addTo(lg).bindPopup(`<strong>Start</strong><br/>${formatGimiTime(points[0].gpsTime)}`);
+        }).addTo(lg).bindPopup(`<strong>${t('history.startPoint')}</strong><br/>${formatGimiTime(points[0].gpsTime)}`);
 
         // End marker
         const last = points[points.length - 1];
@@ -185,7 +263,7 @@ export default function History() {
             fillOpacity: 1,
             color: '#fff',
             weight: 2,
-        }).addTo(lg).bindPopup(`<strong>End</strong><br/>${formatGimiTime(last.gpsTime)}`);
+        }).addTo(lg).bindPopup(`<strong>${t('history.endPoint')}</strong><br/>${formatGimiTime(last.gpsTime)}`);
 
         // Draw Stop Markers
         activeStops.forEach((s, sIdx) => {
@@ -214,10 +292,10 @@ export default function History() {
             L.marker([s.lat, s.lng], { icon: stopIcon })
                 .addTo(lg)
                 .bindPopup(`
-                    <b>Stop #${sIdx + 1}</b><br>
-                    <b>Duration:</b> ${Math.round(s.durationMs / 60000)} mins<br>
-                    <b>Time:</b> ${formatGimiTime(s.startTime)}<br>to ${formatGimiTime(s.endTime)}
-                    ${s.address ? `<br/><b>Address:</b> ${s.address}` : ''}
+                    <b>${t('history.stop')} #${sIdx + 1}</b><br>
+                    <b>${t('history.duration')}:</b> ${formatDuration(s.durationMs, t)}<br>
+                    <b>${t('history.time')}:</b> ${formatGimiTime(s.startTime)}<br>${t('history.toLabel')} ${formatGimiTime(s.endTime)}
+                    ${s.address ? `<br/><b>${t('history.address')}:</b> ${s.address}` : ''}
                 `);
         });
 
@@ -231,38 +309,90 @@ export default function History() {
         markerRef.current = L.marker([points[0].lat, points[0].lng], { icon: playIcon }).addTo(lg);
 
         map.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
-    }, []);
+    }, [t]);
 
-    // Filter stops dynamically client-side when threshold changes
+    // Filter track and stops dynamically client-side when threshold or mode changes
     useEffect(() => {
-        const filtered = apiStops.filter(s => (s.durationMs / 60000) >= parkingThreshold);
-        setStops(filtered);
-        if (track.length > 0) {
-            drawTrack(track, filtered);
+        if (rawTrack.length === 0) {
+            setTrack([]);
+            setStops([]);
+            setTotalDistance(0);
+            setAverageSpeed(0);
+            return;
         }
-    }, [parkingThreshold, apiStops, track, drawTrack]);
+
+        // 1. Filter track points based on positioning mode
+        const filteredPoints = filterTrackPoints(rawTrack, positionMode);
+        setTrack(filteredPoints);
+
+        // 2. Recalculate distance based on filtered points
+        let distKm = 0;
+        if (positionMode === 'all' && apiMileage > 0) {
+            distKm = apiMileage;
+        } else {
+            let distMeters = 0;
+            let prevPoint: TrackPoint | null = null;
+            for (const pt of filteredPoints) {
+                if (prevPoint) {
+                    distMeters += haversineDistance(prevPoint.lat, prevPoint.lng, pt.lat, pt.lng);
+                }
+                prevPoint = pt;
+            }
+            distKm = distMeters / 1000;
+        }
+        setTotalDistance(distKm);
+
+        // 3. Recalculate average speed based on filtered points (with fallback for tags/devices without active speed data)
+        let avgSpd = 0;
+        const movingPoints = filteredPoints.filter(p => p.speed > 0);
+        if (movingPoints.length > 0) {
+            avgSpd = movingPoints.reduce((acc, p) => acc + p.speed, 0) / movingPoints.length;
+        } else if (filteredPoints.length >= 2 && distKm > 0) {
+            const firstPt = filteredPoints[0];
+            const lastPt = filteredPoints[filteredPoints.length - 1];
+            const firstMs = new Date(firstPt.gpsTime.replace(' ', 'T') + (firstPt.gpsTime.endsWith('Z') ? '' : 'Z')).getTime();
+            const lastMs = new Date(lastPt.gpsTime.replace(' ', 'T') + (lastPt.gpsTime.endsWith('Z') ? '' : 'Z')).getTime();
+            const durationHours = (lastMs - firstMs) / (1000 * 60 * 60);
+            if (durationHours > 0) {
+                avgSpd = distKm / durationHours;
+            }
+        }
+        setAverageSpeed(avgSpd);
+
+        // 3. Filter stops based on parking threshold
+        const filteredStops = apiStops.filter(s => (s.durationMs / 60000) >= parkingThreshold);
+        setStops(filteredStops);
+
+        // 4. Draw track on map
+        drawTrack(filteredPoints, filteredStops);
+    }, [rawTrack, positionMode, parkingThreshold, apiStops, apiMileage, filterTrackPoints, drawTrack]);
 
     const loadTrack = useCallback(async () => {
         if (!accessToken || !selectedImei || !startTime || !endTime) return;
         setLoading(true);
         setError(null);
         setTrack([]);
+        setRawTrack([]);
         setStops([]);
         setApiStops([]);
         setTotalDistance(0);
+        setApiMileage(0);
         setAverageSpeed(0);
         setPlaybackIndex(0);
         setPlaying(false);
 
         try {
-            const sTime = formatToUtcApiTime(startTime);
-            const eTime = formatToUtcApiTime(endTime);
+            const sTime = formatToLocalApiTime(startTime);
+            const eTime = formatToLocalApiTime(endTime);
 
             // Query track points, stops (parking), and mileage in parallel
             const [resTrack, resStops, resMileage] = await Promise.all([
                 gimiService.getTrackHistory(accessToken, selectedImei, sTime, eTime),
                 gimiService.getParkingReport(accessToken, account || '', selectedImei, sTime, eTime, 'off'),
-                gimiService.getTrackMileage(accessToken, selectedImei, sTime, eTime)
+                gimiService.getTrackMileage(accessToken, selectedImei, sTime, eTime).catch(e => {
+                    console.error('Failed to fetch mileage for history page:', e);
+                    return null;
+                })
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ]) as any[];
 
@@ -271,49 +401,13 @@ export default function History() {
                 const points: TrackPoint[] = resTrack.result.map((p: any) => ({
                     lat: p.lat,
                     lng: p.lng,
-                    speed: p.speed || 0,
+                    speed: p.gpsSpeed !== undefined ? p.gpsSpeed : (p.speed || 0),
                     gpsTime: p.gpsTime || '',
                     direction: p.direction || 0,
-                    accStatus: p.accStatus !== undefined ? String(p.accStatus) : (p.acc !== undefined ? String(p.acc) : (p.ignition !== undefined ? String(p.ignition) : undefined))
+                    accStatus: p.accStatus !== undefined ? String(p.accStatus) : (p.acc !== undefined ? String(p.acc) : (p.ignition !== undefined ? String(p.ignition) : undefined)),
+                    posType: String(p.posType || p.positionType || 'GPS'),
+                    confidence: p.confidence !== undefined ? Number(p.confidence) : undefined
                 }));
-
-                setTrack(points);
-
-                // Calculate average speed of moving points
-                const movingPoints = points.filter(p => p.speed > 0);
-                const avgSpd = movingPoints.length > 0
-                    ? movingPoints.reduce((acc, p) => acc + p.speed, 0) / movingPoints.length
-                    : 0;
-                setAverageSpeed(avgSpd);
-
-                // Parse Mileage returned from Tracksolid API (which is in meters, convert to km)
-                let mileageVal = 0;
-                if (Array.isArray(resMileage?.result) && resMileage.result.length > 0) {
-                    mileageVal = resMileage.result[0].mileage;
-                } else if (resMileage?.result?.mileage !== undefined) {
-                    mileageVal = resMileage.result.mileage;
-                } else if (resMileage?.data && Array.isArray(resMileage.data) && resMileage.data.length > 0) {
-                    mileageVal = resMileage.data[0].mileage;
-                }
-                let mileageKm = Number(mileageVal || 0) / 1000;
-
-                // Fallback to integrated distance if mileage returned from API is 0
-                if (mileageKm <= 0 && points.length > 0) {
-                    let distMeters = 0;
-                    let prevPoint: TrackPoint | null = null;
-                    for (const pt of points) {
-                        if (!pt || pt.lat === undefined || pt.lng === undefined) continue;
-                        const lat = Number(pt.lat);
-                        const lng = Number(pt.lng);
-                        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) continue;
-                        if (prevPoint) {
-                            distMeters += haversineDistance(prevPoint.lat, prevPoint.lng, lat, lng);
-                        }
-                        prevPoint = pt;
-                    }
-                    mileageKm = distMeters / 1000;
-                }
-                setTotalDistance(mileageKm);
 
                 // Parse Stops returned from Tracksolid API
                 const stopRows = resStops?.data?.rows || resStops?.result || [];
@@ -327,23 +421,35 @@ export default function History() {
                     address: s.addr || s.address || ''
                 }));
 
-                setApiStops(parsedStops);
+                // Parse Mileage returned from Tracksolid API (which is in meters, convert to km)
+                let mileageVal = 0;
+                if (resMileage) {
+                    if (Array.isArray(resMileage.result) && resMileage.result.length > 0) {
+                        mileageVal = resMileage.result[0].mileage;
+                    } else if (resMileage.result?.mileage !== undefined) {
+                        mileageVal = resMileage.result.mileage;
+                    } else if (resMileage.data && Array.isArray(resMileage.data) && resMileage.data.length > 0) {
+                        mileageVal = resMileage.data[0].mileage;
+                    }
+                }
+                const mileageKm = Number(mileageVal || 0) / 1000;
 
-                const filteredStops = parsedStops.filter(s => (s.durationMs / 60000) >= parkingThreshold);
-                setStops(filteredStops);
-                drawTrack(points, filteredStops);
+                setApiStops(parsedStops);
+                setApiMileage(mileageKm);
+                setRawTrack(points);
+
                 if (window.innerWidth < 768) {
                     setIsMinimized(true);
                 }
             } else {
-                setError('No track data found for this period');
+                setError(t('history.noTrackData') || 'No track data found for this period');
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to load track');
+            setError(err instanceof Error ? err.message : (t('history.failedToLoad') || 'Failed to load track'));
         } finally {
             setLoading(false);
         }
-    }, [accessToken, account, selectedImei, startTime, endTime, parkingThreshold, drawTrack]);
+    }, [accessToken, account, selectedImei, startTime, endTime, t]);
 
     const getSpeedColor = (speed: number) => {
         if (speed <= 0) return '#6b7280';
@@ -401,6 +507,14 @@ export default function History() {
                 {/* Floating controls - top left */}
                 <div
                     className="glass-panel animate-slide-left"
+                    ref={(el) => {
+                        // Prevent Leaflet from capturing touch/click events inside this panel
+                        // Without this, mobile users cannot interact with inputs inside the map overlay
+                        if (el && mapRef.current) {
+                            L.DomEvent.disableClickPropagation(el);
+                            L.DomEvent.disableScrollPropagation(el);
+                        }
+                    }}
                     style={{
                         position: 'absolute',
                         top: 16,
@@ -409,7 +523,8 @@ export default function History() {
                         padding: '16px',
                         zIndex: 999,
                         maxHeight: 'calc(100vh - 120px)',
-                        overflowY: 'auto'
+                        overflowY: 'auto',
+                        touchAction: 'pan-y',  // allow vertical scroll inside panel
                     }}
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMinimized ? '0px' : '12px' }}>
@@ -461,27 +576,64 @@ export default function History() {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                                 <div>
-                                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>From</label>
-                                    <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="sx-input" style={{ fontSize: '12px', padding: '6px 8px', marginTop: '4px', width: '100%', boxSizing: 'border-box' }} />
+                                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>{t('history.from')}</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={startTime}
+                                        onChange={(e) => setStartTime(e.target.value)}
+                                        className="sx-input"
+                                        style={{
+                                            fontSize: '12px', padding: '6px 8px', marginTop: '4px',
+                                            width: '100%', boxSizing: 'border-box',
+                                            touchAction: 'manipulation',  // instant tap response on mobile
+                                            WebkitAppearance: 'none',
+                                            cursor: 'pointer',
+                                        }}
+                                    />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>To</label>
-                                    <input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="sx-input" style={{ fontSize: '12px', padding: '6px 8px', marginTop: '4px', width: '100%', boxSizing: 'border-box' }} />
+                                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>{t('history.to')}</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={endTime}
+                                        onChange={(e) => setEndTime(e.target.value)}
+                                        className="sx-input"
+                                        style={{
+                                            fontSize: '12px', padding: '6px 8px', marginTop: '4px',
+                                            width: '100%', boxSizing: 'border-box',
+                                            touchAction: 'manipulation',
+                                            WebkitAppearance: 'none',
+                                            cursor: 'pointer',
+                                        }}
+                                    />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Parking Time</label>
+                                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>{t('history.parkingTime')}</label>
                                     <select
                                         value={parkingThreshold}
                                         onChange={(e) => setParkingThreshold(Number(e.target.value))}
                                         className="sx-select"
                                         style={{ fontSize: '12px', padding: '6px 8px' }}
                                     >
-                                        <option value={0}>0 Minutes (All Stops)</option>
-                                        <option value={1}>1 Minute</option>
-                                        <option value={3}>3 Minutes</option>
-                                        <option value={5}>5 Minutes</option>
-                                        <option value={10}>10 Minutes</option>
-                                        <option value={30}>30 Minutes</option>
+                                        <option value={0}>{t('history.parkingTimeOptions.all')}</option>
+                                        <option value={1}>{t('history.parkingTimeOptions.1min')}</option>
+                                        <option value={3}>{t('history.parkingTimeOptions.3min')}</option>
+                                        <option value={5}>{t('history.parkingTimeOptions.5min')}</option>
+                                        <option value={10}>{t('history.parkingTimeOptions.10min')}</option>
+                                        <option value={30}>{t('history.parkingTimeOptions.30min')}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>{t('history.positionMode')}</label>
+                                    <select
+                                        value={positionMode}
+                                        onChange={(e) => setPositionMode(e.target.value as any)}
+                                        className="sx-select"
+                                        style={{ fontSize: '12px', padding: '6px 8px' }}
+                                    >
+                                        <option value="precise">{t('history.positionModeOptions.precise')}</option>
+                                        <option value="optimized">{t('history.positionModeOptions.optimized')}</option>
+                                        <option value="all">{t('history.positionModeOptions.all')}</option>
                                     </select>
                                 </div>
                             </div>
@@ -492,7 +644,7 @@ export default function History() {
                                 className="sx-btn sx-btn-primary sx-btn-sm"
                                 style={{ width: '100%' }}
                             >
-                                {loading ? t('common.loading') : `Load Track`}
+                                {loading ? t('common.loading') : t('history.loadTrack')}
                             </button>
 
                             {error && (
@@ -501,17 +653,23 @@ export default function History() {
                                 </div>
                             )}
 
+                            {rawTrack.length > 0 && track.length === 0 && (
+                                <div style={{ marginTop: '8px', padding: '10px', borderRadius: 'var(--radius-sm)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b', fontSize: '12px', fontWeight: '500', lineHeight: '1.4' }}>
+                                    {t('history.filteredNoDataHint')}
+                                </div>
+                            )}
+
                             {/* Left Panel Premium Journey Summary */}
                             {track.length > 0 && (
                                 <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
                                     <div style={{ display: 'flex', gap: '12px' }}>
                                         <div style={{ flex: 1, padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total Distance</div>
-                                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--accent)' }}>{totalDistance.toFixed(2)} km</div>
+                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{t('history.totalDistance')}</div>
+                                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--accent)' }}>{totalDistance.toFixed(2)} {t('history.distanceUnit') || 'km'}</div>
                                         </div>
                                         <div style={{ flex: 1, padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Avg Speed</div>
-                                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--warning)' }}>{averageSpeed.toFixed(1)} km/h</div>
+                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{t('history.avgSpeed')}</div>
+                                            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--warning)' }}>{averageSpeed.toFixed(1)} {t('history.speedUnit') || 'km/h'}</div>
                                         </div>
                                     </div>
 
@@ -522,7 +680,7 @@ export default function History() {
                                             
                                             <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#22c55e', border: '2px solid #fff', marginTop: '4px', flexShrink: 0, zIndex: 1 }} />
                                             <div>
-                                                <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Start point</div>
+                                                <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('history.startPoint')}</div>
                                                 <div style={{ fontSize: '11px', fontWeight: '600' }}>{formatGimiTime(track[0].gpsTime)}</div>
                                                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{track[0].lat.toFixed(5)}, {track[0].lng.toFixed(5)}</div>
                                             </div>
@@ -531,7 +689,7 @@ export default function History() {
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444', border: '2px solid #fff', marginTop: '4px', flexShrink: 0, zIndex: 1 }} />
                                             <div>
-                                                <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>End point</div>
+                                                <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('history.endPoint')}</div>
                                                 <div style={{ fontSize: '11px', fontWeight: '600' }}>{formatGimiTime(track[track.length - 1].gpsTime)}</div>
                                                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{track[track.length - 1].lat.toFixed(5)}, {track[track.length - 1].lng.toFixed(5)}</div>
                                             </div>
@@ -545,7 +703,7 @@ export default function History() {
                                         className="sx-btn sx-btn-ghost sx-btn-sm"
                                         style={{ width: '100%', justifyContent: 'center' }}
                                     >
-                                        View Detailed Tables
+                                        {t('history.viewDetailedTables')}
                                     </button>
                                 </div>
                             )}
@@ -573,12 +731,12 @@ export default function History() {
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                            <span>{totalDistance.toFixed(2)} km</span>
+                            <span>{totalDistance.toFixed(2)} {t('history.distanceUnit') || 'km'}</span>
                         </div>
                         <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border)' }} />
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                            <span>{stops.length} Stops</span>
+                            <span>{t('history.stopsCount', { count: stops.length })}</span>
                         </div>
                     </div>
                 )}
@@ -612,7 +770,7 @@ export default function History() {
                                     paddingBottom: '4px'
                                 }}
                             >
-                                Playback Points
+                                {t('history.playbackPoints')}
                             </button>
                             <button
                                 onClick={() => setActiveTab('stops')}
@@ -627,7 +785,7 @@ export default function History() {
                                     paddingBottom: '4px'
                                 }}
                             >
-                                Stops List ({stops.length})
+                                {t('history.stopsList', { count: stops.length })}
                             </button>
                         </div>
                         <button
@@ -643,11 +801,11 @@ export default function History() {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
                                 <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-elevated)', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
                                     <tr>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>No.</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>Positioning Time</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>Ignition</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>Coordinates</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>Speed(km/h)</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.pointNo')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.positioningTime')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.ignition')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.coordinates')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.speed')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -670,14 +828,14 @@ export default function History() {
                                                 <td style={{ padding: '10px 16px' }}>{formatGimiTime(item.gpsTime)}</td>
                                                 <td style={{ padding: '10px 16px' }}>
                                                     <span className={`badge ${isIgnitionOn ? 'badge-online' : 'badge-offline'}`}>
-                                                        {isIgnitionOn ? 'ON' : 'OFF'}
+                                                        {isIgnitionOn ? t('history.on') : t('history.off')}
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '10px 16px', fontFamily: 'monospace' }}>
                                                     {item.lat.toFixed(6)}, {item.lng.toFixed(6)}
                                                 </td>
                                                 <td style={{ padding: '10px 16px', fontWeight: '600', color: getSpeedColor(item.speed) }}>
-                                                    {item.speed > 0 ? `${item.speed.toFixed(1)} km/h` : 'None'}
+                                                    {item.speed > 0 ? `${item.speed.toFixed(1)} ${t('history.speedUnit') || 'km/h'}` : (t('history.none') || 'None')}
                                                 </td>
                                             </tr>
                                         );
@@ -688,13 +846,13 @@ export default function History() {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
                                 <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--bg-elevated)', zIndex: 10, borderBottom: '1px solid var(--border)' }}>
                                     <tr>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>No.</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>Start Time</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>End Time</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>Duration</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>Coordinates</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>Address</th>
-                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600', textAlign: 'center' }}>Locate</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.pointNo')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.startTime')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.endTime')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.duration')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.coordinates')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{t('history.address')}</th>
+                                        <th style={{ padding: '10px 16px', color: 'var(--text-muted)', fontWeight: '600', textAlign: 'center' }}>{t('history.locate')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -719,7 +877,7 @@ export default function History() {
                                                 <td style={{ padding: '10px 16px' }}>{formatGimiTime(item.startTime)}</td>
                                                 <td style={{ padding: '10px 16px' }}>{formatGimiTime(item.endTime)}</td>
                                                 <td style={{ padding: '10px 16px', fontWeight: '600', color: 'var(--warning)' }}>
-                                                    {formatDuration(item.durationMs)}
+                                                    {formatDuration(item.durationMs, t)}
                                                 </td>
                                                 <td style={{ padding: '10px 16px', fontFamily: 'monospace' }}>
                                                     {item.lat.toFixed(6)}, {item.lng.toFixed(6)}
@@ -737,7 +895,7 @@ export default function History() {
                                     ) : (
                                         <tr>
                                             <td colSpan={7} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                                No stops detected for this period
+                                                {t('history.noStops') || 'No stops detected for this period'}
                                             </td>
                                         </tr>
                                     )}
@@ -832,7 +990,7 @@ export default function History() {
                     {/* Current point info */}
                     {currentPoint && (
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                            <span style={{ color: getSpeedColor(currentPoint.speed) }}>{currentPoint.speed} km/h</span>
+                            <span style={{ color: getSpeedColor(currentPoint.speed) }}>{currentPoint.speed} {t('history.speedUnit') || 'km/h'}</span>
                             {' · '}
                             {formatGimiTimeOnly(currentPoint.gpsTime)}
                         </div>
@@ -843,17 +1001,17 @@ export default function History() {
     );
 }
 
-function formatDuration(ms: number): string {
+function formatDuration(ms: number, t: any): string {
     const totalSecs = Math.floor(ms / 1000);
     const hours = Math.floor(totalSecs / 3600);
     const mins = Math.floor((totalSecs % 3600) / 60);
     const secs = totalSecs % 60;
 
     if (hours > 0) {
-        return `${hours}h ${mins}m`;
+        return t('history.durationFormat.hoursMins', { hours, mins });
     }
     if (mins > 0) {
-        return `${mins} mins`;
+        return t('history.durationFormat.mins', { mins });
     }
-    return `${secs}s`;
+    return t('history.durationFormat.secs', { secs });
 }

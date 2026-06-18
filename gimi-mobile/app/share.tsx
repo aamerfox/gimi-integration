@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, TouchableOpacity, Alert } from 'react-native';
 import { validateShareUrl } from '@/services/share';
 import { api } from '@/services/api';
 import { formatGimiTime } from '@/utils/time';
@@ -66,6 +66,39 @@ export default function ShareViewerPage() {
     const [lastRefresh, setLastRefresh] = useState<string>('');
     const paramsRef = useRef<{ imei: string; tok: string } | null>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [ringing, setRinging] = useState(false);
+
+    const handleRingTag = async () => {
+        if (!paramsRef.current) return;
+        const { imei, tok } = paramsRef.current;
+        setRinging(true);
+        try {
+            const res = await api.post('', {
+                method: 'jimi.open.instruction.send',
+                access_token: tok,
+                imei: imei,
+                inst_param_json: JSON.stringify({
+                    inst_id: '0',
+                    inst_template: 'FIND,3000#',
+                    params: []
+                })
+            }) as { code?: number; message?: string };
+            if (Platform.OS === 'web') {
+                alert(`Sent ring command to ${deviceName}`);
+            } else {
+                Alert.alert('Success', `Sent ring command to ${deviceName}`);
+            }
+        } catch (err: any) {
+            const errorMsg = err?.message || 'Failed to send ring command';
+            if (Platform.OS === 'web') {
+                alert(errorMsg);
+            } else {
+                Alert.alert('Error', errorMsg);
+            }
+        } finally {
+            setRinging(false);
+        }
+    };
 
     const fetchLocation = useCallback(async () => {
         if (!paramsRef.current) return;
@@ -162,13 +195,27 @@ export default function ShareViewerPage() {
         <View style={v.container}>
             {/* Header bar */}
             <View style={v.header}>
-                <View>
+                <View style={{ flex: 1 }}>
                     <Text style={v.headerTitle}>📍 {deviceName}</Text>
                     <Text style={v.headerSub}>Live Location · {timeLeft()}</Text>
                 </View>
-                <TouchableOpacity style={v.refreshBtn} onPress={fetchLocation}>
-                    <Text style={v.refreshBtnText}>⟳</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    {locationData && (
+                        <TouchableOpacity 
+                            style={[
+                                v.ringBtn, 
+                                ringing && { backgroundColor: 'rgba(239,68,68,0.2)', borderColor: 'rgba(239,68,68,0.4)' }
+                            ]} 
+                            onPress={handleRingTag}
+                            disabled={ringing}
+                        >
+                            <Text style={[v.ringBtnText, ringing && { color: '#ef4444' }]}>{ringing ? '🔔...' : '🔔 Ring'}</Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={v.refreshBtn} onPress={fetchLocation}>
+                        <Text style={v.refreshBtnText}>⟳</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Map */}
@@ -237,6 +284,21 @@ const v = StyleSheet.create({
         backgroundColor: 'rgba(0,212,170,0.12)', alignItems: 'center', justifyContent: 'center',
     },
     refreshBtnText: { fontSize: 20, color: '#0891b2' },
+    ringBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        backgroundColor: 'rgba(8,145,178,0.15)',
+        borderColor: 'rgba(8,145,178,0.3)',
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    ringBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#0891b2',
+    },
 
     mapArea: { flex: 1 },
 
@@ -255,3 +317,4 @@ const v = StyleSheet.create({
         paddingVertical: 8, backgroundColor: '#0a0e1a',
     },
 });
+

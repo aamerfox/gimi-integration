@@ -48,7 +48,7 @@ export default function Dashboard() {
     const [showMobilePanel, setShowMobilePanel] = useState(false);
     const mapRef = useRef<LiveMapHandle>(null);
     const isMobile = useIsMobile();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
 
     // Fetch today's mileage when selected device changes
     useEffect(() => {
@@ -232,6 +232,65 @@ export default function Dashboard() {
         }
     }, [devices]);
 
+    const [resolvedAddress, setResolvedAddress] = useState<string>('');
+    const [addressLoading, setAddressLoading] = useState(false);
+
+    // Fetch address description via reverse geocoding when selected device coordinates change
+    useEffect(() => {
+        if (!selectedDevice?.lat || !selectedDevice?.lng) {
+            setResolvedAddress('');
+            return;
+        }
+
+        let isMounted = true;
+        const fetchAddress = async () => {
+            setAddressLoading(true);
+            try {
+                const lat = selectedDevice.lat;
+                const lng = selectedDevice.lng;
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`, {
+                    headers: { 'Accept-Language': i18n.language === 'ar' ? 'ar' : 'en' }
+                });
+                const data = await res.json();
+                if (!isMounted) return;
+                if (data?.display_name) {
+                    const parts = data.display_name.split(',').map((s: string) => s.trim());
+                    // Keep first 3 parts of the address for readability
+                    setResolvedAddress(parts.slice(0, 3).join(', '));
+                } else {
+                    setResolvedAddress('');
+                }
+            } catch (err) {
+                console.error('[Dashboard] Address reverse geocode failed:', err);
+                if (isMounted) setResolvedAddress('');
+            } finally {
+                if (isMounted) setAddressLoading(false);
+            }
+        };
+
+        fetchAddress();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [selectedDevice?.lat, selectedDevice?.lng, i18n.language]);
+
+    const [ringingImei, setRingingImei] = useState<string | null>(null);
+
+    const handleRingTag = async (device: Device) => {
+        if (!accessToken) return;
+        setRingingImei(device.imei);
+        try {
+            await gimiService.sendDeviceCommand(accessToken, device.imei, 'FIND,3000#');
+            alert(t('deviceDetails.ringSuccess', { name: device.deviceName || device.imei }));
+        } catch (err) {
+            const error = err as Error;
+            alert(error?.message || t('common.error'));
+        } finally {
+            setRingingImei(null);
+        }
+    };
+
     const onlineCount = devices.filter((d: Device) => d.status === '1' || d.posType === 'GPS').length;
     const offlineCount = devices.length - onlineCount;
 
@@ -360,7 +419,7 @@ export default function Dashboard() {
                             <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
                                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{t('deviceDetails.address')}</div>
                                 <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px', lineHeight: '1.4' }}>
-                                    {selectedDevice.locDesc || t('deviceDetails.noAddress')}
+                                    {addressLoading ? t('common.loading') : (resolvedAddress || selectedDevice.locDesc || t('deviceDetails.noAddress'))}
                                 </div>
                                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{t('deviceDetails.coordinates')}</div>
                                 <div style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
@@ -396,7 +455,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Action Row buttons */}
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '16px' }}>
                                 <button
                                     onClick={() => {
                                         if (selectedDevice.lat && selectedDevice.lng) {
@@ -404,23 +463,38 @@ export default function Dashboard() {
                                         }
                                     }}
                                     className="sx-btn sx-btn-ghost sx-btn-sm"
-                                    style={{ flex: 1, justifyContent: 'center', fontSize: '11px', padding: '6px 8px' }}
+                                    style={{ justifyContent: 'center', fontSize: '11px', padding: '6px 8px' }}
                                 >
                                     {t('deviceDetails.live')}
                                 </button>
                                 <button
                                     onClick={() => navigate(`/history?imei=${selectedDevice.imei}`)}
                                     className="sx-btn sx-btn-primary sx-btn-sm"
-                                    style={{ flex: 1, justifyContent: 'center', fontSize: '11px', padding: '6px 8px' }}
+                                    style={{ justifyContent: 'center', fontSize: '11px', padding: '6px 8px' }}
                                 >
                                     {t('deviceDetails.tracks')}
                                 </button>
                                 <button
                                     onClick={() => navigate('/share-manage')}
                                     className="sx-btn sx-btn-ghost sx-btn-sm"
-                                    style={{ flex: 1, justifyContent: 'center', fontSize: '11px', padding: '6px 8px' }}
+                                    style={{ justifyContent: 'center', fontSize: '11px', padding: '6px 8px' }}
                                 >
                                     {t('deviceDetails.share')}
+                                </button>
+                                <button
+                                    onClick={() => handleRingTag(selectedDevice)}
+                                    disabled={ringingImei === selectedDevice.imei}
+                                    className="sx-btn sx-btn-ghost sx-btn-sm"
+                                    style={{ 
+                                        justifyContent: 'center', 
+                                        fontSize: '11px', 
+                                        padding: '6px 8px',
+                                        color: 'var(--accent)',
+                                        borderColor: 'var(--border-accent)',
+                                        background: 'var(--accent-dim)'
+                                    }}
+                                >
+                                    {ringingImei === selectedDevice.imei ? t('common.loading') : t('deviceDetails.ringTag')}
                                 </button>
                             </div>
                         </div>
@@ -517,7 +591,7 @@ export default function Dashboard() {
                         <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
                             <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{t('deviceDetails.address')}</div>
                             <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)', lineHeight: '1.4' }}>
-                                {selectedDevice.locDesc || t('deviceDetails.noAddress')}
+                                {addressLoading ? t('common.loading') : (resolvedAddress || selectedDevice.locDesc || t('deviceDetails.noAddress'))}
                             </div>
                         </div>
 
@@ -551,7 +625,7 @@ export default function Dashboard() {
                         </div>
 
                         {/* Action buttons row */}
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                             <button
                                 onClick={() => {
                                     if (selectedDevice.lat && selectedDevice.lng) {
@@ -559,23 +633,38 @@ export default function Dashboard() {
                                     }
                                 }}
                                 className="sx-btn sx-btn-ghost sx-btn-sm"
-                                style={{ flex: 1, justifyContent: 'center', fontSize: '11px', padding: '8px' }}
+                                style={{ justifyContent: 'center', fontSize: '11px', padding: '8px' }}
                             >
                                 {t('deviceDetails.live')}
                             </button>
                             <button
                                 onClick={() => navigate(`/history?imei=${selectedDevice.imei}`)}
                                 className="sx-btn sx-btn-primary sx-btn-sm"
-                                style={{ flex: 1, justifyContent: 'center', fontSize: '11px', padding: '8px' }}
+                                style={{ justifyContent: 'center', fontSize: '11px', padding: '8px' }}
                             >
                                 {t('deviceDetails.tracks')}
                             </button>
                             <button
                                 onClick={() => navigate('/share-manage')}
                                 className="sx-btn sx-btn-ghost sx-btn-sm"
-                                style={{ flex: 1, justifyContent: 'center', fontSize: '11px', padding: '8px' }}
+                                style={{ justifyContent: 'center', fontSize: '11px', padding: '8px' }}
                             >
                                 {t('deviceDetails.share')}
+                            </button>
+                            <button
+                                onClick={() => handleRingTag(selectedDevice)}
+                                disabled={ringingImei === selectedDevice.imei}
+                                className="sx-btn sx-btn-ghost sx-btn-sm"
+                                style={{ 
+                                    justifyContent: 'center', 
+                                    fontSize: '11px', 
+                                    padding: '8px',
+                                    color: 'var(--accent)',
+                                    borderColor: 'var(--border-accent)',
+                                    background: 'var(--accent-dim)'
+                                }}
+                            >
+                                {ringingImei === selectedDevice.imei ? t('common.loading') : t('deviceDetails.ringTag')}
                             </button>
                         </div>
                     </div>

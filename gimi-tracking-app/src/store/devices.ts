@@ -17,6 +17,13 @@ export interface Device {
     batteryPowerVal?: string;  // API battery percentage as string
     accStatus?: string;
     locDesc?: string | null;
+    // TODAY'S ACTIVITY — populated from jimi.user.device.location.list
+    // This is the same value shown on TrackSolid's live widget "Today's mileage"
+    todayMileage?: number;     // km — today's total distance from TrackSolid server
+    today_mileage?: number;    // alias (snake_case from some API versions)
+    todayDis?: number;         // another possible alias
+    today_dis?: number;
+    runMileage?: number;       // some devices report as runMileage
 }
 
 interface DeviceState {

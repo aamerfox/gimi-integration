@@ -89,9 +89,9 @@ export default function LiveMapScreen() {
     setRingingImei(device.imei);
     try {
       await gimiService.sendDeviceCommand(accessToken, device.imei, 'FIND,3000#');
-      Alert.alert('Success', `Sent ring command to ${device.deviceName || device.imei}`);
+      Alert.alert(t('map.ringTag'), t('map.ringSuccess', { name: device.deviceName || device.imei }));
     } catch (err: any) {
-      Alert.alert('Failed to send command', err?.message || 'API error');
+      Alert.alert(t('common.error'), err?.message || t('map.ringFail'));
     } finally {
       setRingingImei(null);
     }
@@ -332,7 +332,7 @@ export default function LiveMapScreen() {
                       <Feather name="bell" size={12} color={C.accent} />
                     )}
                     <Text style={{ color: C.accent, fontSize: 12, fontWeight: '700' }}>
-                      Ring Tag
+                      {t('map.ringTag')}
                     </Text>
                   </TouchableOpacity>
 

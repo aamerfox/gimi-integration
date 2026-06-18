@@ -1043,3 +1043,76 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 [data-theme="light"] .brand-logo-wordmark {
   filter: none;
 }
+
+/* ── Language Switcher Premium Styles ────────────────────────── */
+.sx-lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-height: 38px;
+  width: auto;
+}
+
+.sx-lang-switcher:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: var(--accent-glow), 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1.5px);
+  color: var(--text-primary);
+}
+
+.sx-lang-switcher:active {
+  transform: translateY(0);
+}
+
+.sx-lang-switcher:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--accent-glow);
+}
+
+/* Subtle micro-animation for the icon */
+.sx-lang-icon {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: var(--text-secondary);
+}
+
+.sx-lang-switcher:hover .sx-lang-icon {
+  transform: scale(1.15) rotate(15deg);
+  color: var(--text-primary);
+}
+
+.sx-lang-text {
+  transition: color 0.25s ease;
+}
+
+:root[dir="rtl"] .sx-lang-switcher {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+}
+
+/* ── Light Theme Overrides for Language Switcher ────────────────── */
+[data-theme="light"] .sx-lang-switcher {
+  background: rgba(30, 58, 138, 0.04);
+  border-color: rgba(30, 58, 138, 0.08);
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.05);
+}
+
+[data-theme="light"] .sx-lang-switcher:hover {
+  background: rgba(30, 58, 138, 0.1);
+  border-color: var(--accent);
+  box-shadow: var(--accent-glow), 0 4px 12px rgba(30, 58, 138, 0.1);
+}

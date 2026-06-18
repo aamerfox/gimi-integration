@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
 // All environments must connect through the Cloud Run proxy to bypass TrackSolid Pro IP Whitelisting
-const API_BASE = 'https://saudiex-tracker-256825749353.europe-west10.run.app/token';
+const API_BASE = 'https://tag.traceplus.co/token';
 
 const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
 const APP_SECRET = 'd1bf0654370a4a148abacd02abe8146e';

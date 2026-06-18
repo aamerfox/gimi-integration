@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView,
-    ActivityIndicator, Platform, FlatList,
+    ActivityIndicator, Platform, FlatList, Modal,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { WebView } from 'react-native-webview';
@@ -20,6 +20,8 @@ interface TrackPoint {
     speed: number;
     gpsTime: string;
     direction: number;
+    posType?: string;
+    confidence?: number;
 }
 
 interface StopPoint {
@@ -157,61 +159,137 @@ function buildTrackHtml(points: TrackPoint[], theme: 'dark' | 'light', playIdx: 
 <script>
 var pts = ${pointsJson};
 var playIdx = ${playIdx};
-var map = L.map('map',{center:[pts[0].lat,pts[0].lng],zoom:14,zoomControl:true});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18}).addTo(map);
+var map;
+if (pts && pts.length > 0) {
+  var activeIdx = Math.max(0, Math.min(playIdx, pts.length - 1));
+  map = L.map('map',{center:[pts[0].lat,pts[0].lng],zoom:14,zoomControl:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18}).addTo(map);
 
-// Track polyline
-var line = L.polyline(pts.map(function(p){return [p.lat,p.lng];}), {
-  color:'${lineColor}', weight:4, opacity:0.85
-}).addTo(map);
-map.fitBounds(line.getBounds(),{padding:[40,40]});
+  // Track polyline
+  var line = L.polyline(pts.map(function(p){return [p.lat,p.lng];}), {
+    color:'${lineColor}', weight:4, opacity:0.85
+  }).addTo(map);
+  map.fitBounds(line.getBounds(),{padding:[40,40]});
 
-// Start marker
-L.circleMarker([pts[0].lat,pts[0].lng],{
-  radius:7,fillColor:'#22c55e',fillOpacity:1,color:'#fff',weight:2
-}).addTo(map).bindPopup('<b>Start</b><br>'+pts[0].t);
+  // Start marker
+  L.circleMarker([pts[0].lat,pts[0].lng],{
+    radius:7,fillColor:'#22c55e',fillOpacity:1,color:'#fff',weight:2
+  }).addTo(map).bindPopup('<b>Start</b><br>'+pts[0].t);
 
-// End marker
-var last = pts[pts.length-1];
-L.circleMarker([last.lat,last.lng],{
-  radius:7,fillColor:'#ef4444',fillOpacity:1,color:'#fff',weight:2
-}).addTo(map).bindPopup('<b>End</b><br>'+last.t);
+  // End marker
+  var last = pts[pts.length-1];
+  L.circleMarker([last.lat,last.lng],{
+    radius:7,fillColor:'#ef4444',fillOpacity:1,color:'#fff',weight:2
+  }).addTo(map).bindPopup('<b>End</b><br>'+last.t);
 
-// Draw stop markers
-var stops = ${stopsJson};
-stops.forEach(function(s) {
-  var icon = L.divIcon({
-    className: '',
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-    html: '<div class="stop-marker">P</div>'
+  // Draw stop markers
+  var stops = ${stopsJson};
+  stops.forEach(function(s) {
+    var icon = L.divIcon({
+      className: '',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      html: '<div class="stop-marker">P</div>'
+    });
+    L.marker([s.lat, s.lng], {icon: icon})
+      .addTo(map)
+      .bindPopup('<b>Stop #' + s.idx + '</b><br>' +
+                 '<b>Duration:</b> ' + s.duration + ' mins<br>' +
+                 '<b>Time:</b> ' + s.startT + '<br>to ' + s.endT);
   });
-  L.marker([s.lat, s.lng], {icon: icon})
-    .addTo(map)
-    .bindPopup('<b>Stop #' + s.idx + '</b><br>' +
-               '<b>Duration:</b> ' + s.duration + ' mins<br>' +
-               '<b>Time:</b> ' + s.startT + '<br>to ' + s.endT);
-});
 
-// Playback dot
-var playDot = L.circleMarker([pts[playIdx].lat,pts[playIdx].lng],{
-  radius:10,fillColor:'${accent}',fillOpacity:1,color:'#fff',weight:3
-}).addTo(map);
-playDot.bindPopup('<b>'+pts[playIdx].speed+' km/h</b><br>'+pts[playIdx].t);
+  // Playback dot
+  if (pts[activeIdx]) {
+    var playDot = L.circleMarker([pts[activeIdx].lat,pts[activeIdx].lng],{
+      radius:10,fillColor:'${accent}',fillOpacity:1,color:'#fff',weight:3
+    }).addTo(map);
+    playDot.bindPopup('<b>'+pts[activeIdx].speed+' km/h</b><br>'+pts[activeIdx].t);
 
-// Listen for playback index updates from React
-window.addEventListener('message',function(e){
-  try{
-    var d=typeof e.data==='string'?JSON.parse(e.data):e.data;
-    if(d.type==='setPlay' && pts[d.idx]){
-      playDot.setLatLng([pts[d.idx].lat,pts[d.idx].lng]);
-      map.panTo([pts[d.idx].lat,pts[d.idx].lng],{animate:true,duration:0.3});
-    }
-  }catch(err){}
-});
+    // Listen for playback index updates from React
+    window.addEventListener('message',function(e){
+      try{
+        var d=typeof e.data==='string'?JSON.parse(e.data):e.data;
+        if(d.type==='setPlay' && pts[d.idx]){
+          playDot.setLatLng([pts[d.idx].lat,pts[d.idx].lng]);
+          map.panTo([pts[d.idx].lat,pts[d.idx].lng],{animate:true,duration:0.3});
+        }
+      }catch(err){}
+    });
+  }
+} else {
+  map = L.map('map',{center:[24.7136,46.6753],zoom:6,zoomControl:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18}).addTo(map);
+}
 </script>
 </body>
 </html>`;
+}
+
+function filterTrackPoints(points: TrackPoint[], mode: 'all' | 'optimized' | 'precise'): TrackPoint[] {
+    if (points.length === 0) return [];
+    if (mode === 'all') return points;
+
+    const filtered: TrackPoint[] = [];
+    const MAX_SPEED_KMH = mode === 'precise' ? 100 : 150;
+
+    let prevPoint: TrackPoint | null = null;
+    let prevMs = 0;
+
+    for (const pt of points) {
+        if (!pt || pt.lat === undefined || pt.lng === undefined) continue;
+        const lat = Number(pt.lat);
+        const lng = Number(pt.lng);
+        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) continue;
+
+        // Filter by confidence if present (common for smart tags/IoT devices)
+        if (pt.confidence !== undefined) {
+            if (mode === 'precise' && pt.confidence < 3) {
+                continue;
+            }
+            if (mode === 'optimized' && pt.confidence < 2) {
+                continue;
+            }
+        }
+
+        if (mode === 'precise') {
+            const posType = (typeof pt.posType === 'string' ? pt.posType : String(pt.posType || '')).toUpperCase();
+            const isGps = 
+                posType.includes('GPS') || 
+                posType.includes('BDS') || 
+                posType.includes('GLONASS') || 
+                posType.includes('GLO') || 
+                posType.includes('GALILEO') || 
+                posType.includes('GNSS') || 
+                posType === '0' || 
+                posType === '4' || 
+                posType === '5' || 
+                posType === '6';
+            if (!isGps) {
+                continue;
+            }
+        }
+
+        const s = pt.gpsTime || '';
+        const currMs = s
+            ? (() => { const d = new Date(s.replace(' ', 'T') + (s.endsWith('Z') ? '' : 'Z')); return isNaN(d.getTime()) ? 0 : d.getTime(); })()
+            : 0;
+
+        if (prevPoint) {
+            const distKm = getDistance(prevPoint.lat, prevPoint.lng, lat, lng);
+            const timeSec = currMs > 0 && prevMs > 0 ? (currMs - prevMs) / 1000 : 0;
+            const speedKmh = timeSec > 0 ? (distKm / (timeSec / 3600)) : 0;
+
+            if (timeSec > 0 && speedKmh > MAX_SPEED_KMH) {
+                continue;
+            }
+        }
+
+        filtered.push(pt);
+        prevPoint = pt;
+        prevMs = currMs;
+    }
+
+    return filtered;
 }
 
 // Reusable date-offset helper
@@ -238,11 +316,45 @@ export default function HistoryScreen() {
     const [startTime, setStartTime] = useState(defaults.start);
     const [endTime, setEndTime] = useState(defaults.end);
     const [track, setTrack] = useState<TrackPoint[]>([]);
+    const [rawTrack, setRawTrack] = useState<TrackPoint[]>([]);
+    const [positionMode, setPositionMode] = useState<'all' | 'optimized' | 'precise'>('all');
+    const [apiMileage, setApiMileage] = useState(0);
     const [stops, setStops] = useState<StopPoint[]>([]);
     const [totalDistance, setTotalDistance] = useState(0);
     const [showPointsList, setShowPointsList] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Filter track and stops dynamically client-side when rawTrack or mode changes
+    useEffect(() => {
+        if (rawTrack.length === 0) {
+            setTrack([]);
+            setStops([]);
+            setTotalDistance(0);
+            return;
+        }
+
+        const filteredPoints = filterTrackPoints(rawTrack, positionMode);
+        setTrack(filteredPoints);
+
+        const detectedStops = detectStops(filteredPoints);
+        setStops(detectedStops);
+
+        let distanceKm = 0;
+        if (positionMode === 'all' && apiMileage > 0) {
+            distanceKm = apiMileage;
+        } else {
+            distanceKm = calculateTotalDistance(filteredPoints);
+        }
+        setTotalDistance(distanceKm);
+
+        setPlayIdx(prev => {
+            if (prev >= filteredPoints.length) {
+                return Math.max(0, filteredPoints.length - 1);
+            }
+            return prev;
+        });
+    }, [rawTrack, positionMode, apiMileage]);
 
     // Playback
     const [playing, setPlaying] = useState(false);
@@ -251,6 +363,48 @@ export default function HistoryScreen() {
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
     const [trackHtml, setTrackHtml] = useState('');
+
+    // ─── Date-picker modal state ────────────────────────────────────────────
+    const [showPicker, setShowPicker] = useState(false);
+    const [editingField, setEditingField] = useState<'start' | 'end'>('start');
+
+    // Decomposed picker wheels
+    const parseToObj = (s: string) => {
+        const [datePart = '', timePart = '00:00'] = s.split(' ');
+        const [y = '2026', m = '06', d = '01'] = datePart.split('-');
+        const [h = '00', min = '00'] = timePart.split(':');
+        return { y: Number(y), m: Number(m), d: Number(d), h: Number(h), min: Number(min) };
+    };
+    const [py, setPy] = useState(() => parseToObj(defaults.start).y);
+    const [pm, setPm] = useState(() => parseToObj(defaults.start).m);
+    const [pd, setPd] = useState(() => parseToObj(defaults.start).d);
+    const [ph, setPh] = useState(() => parseToObj(defaults.start).h);
+    const [pmin, setPmin] = useState(() => parseToObj(defaults.start).min);
+
+    const openPicker = (field: 'start' | 'end') => {
+        const obj = parseToObj(field === 'start' ? startTime : endTime);
+        setPy(obj.y); setPm(obj.m); setPd(obj.d); setPh(obj.h); setPmin(obj.min);
+        setEditingField(field);
+        setShowPicker(true);
+    };
+
+    const confirmPicker = () => {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const daysInMonth = new Date(py, pm, 0).getDate();
+        const clampedDay = Math.min(pd, daysInMonth);
+        const formatted = `${py}-${pad(pm)}-${pad(clampedDay)} ${pad(ph)}:${pad(pmin)}`;
+        if (editingField === 'start') setStartTime(formatted);
+        else setEndTime(formatted);
+        setShowPicker(false);
+    };
+
+    const years  = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+    const months = Array.from({ length: 12 }, (_, i) => i + 1);
+    const daysInMonth = new Date(py, pm, 0).getDate();
+    const days   = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    const hours  = Array.from({ length: 24 }, (_, i) => i);
+    const mins   = Array.from({ length: 60 }, (_, i) => i);
+    // ────────────────────────────────────────────────────────────────────────
 
     // Update track HTML whenever track, theme, or stops change
     useEffect(() => {
@@ -300,8 +454,10 @@ export default function HistoryScreen() {
         setLoading(true);
         setError(null);
         setTrack([]);
+        setRawTrack([]);
         setStops([]);
         setTotalDistance(0);
+        setApiMileage(0);
         setPlayIdx(0);
         setPlaying(false);
         try {
@@ -324,9 +480,11 @@ export default function HistoryScreen() {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const pts: TrackPoint[] = resTrack.result.map((p: any) => ({
                     lat: p.lat, lng: p.lng,
-                    speed: p.speed || 0,
+                    speed: p.gpsSpeed !== undefined ? p.gpsSpeed : (p.speed || 0),
                     gpsTime: p.gpsTime || '',
                     direction: p.direction || 0,
+                    posType: String(p.posType || p.positionType || 'GPS'),
+                    confidence: p.confidence !== undefined ? Number(p.confidence) : undefined
                 }));
                 
                 // Parse Mileage returned from Tracksolid API (which is in meters, convert to km)
@@ -340,19 +498,10 @@ export default function HistoryScreen() {
                         mileageVal = resMileage.data[0].mileage;
                     }
                 }
-                let mileageKm = Number(mileageVal || 0) / 1000;
+                const mileageKm = Number(mileageVal || 0) / 1000;
 
-                // Fallback to integrated distance if mileage returned from API is 0
-                if (mileageKm <= 0 && pts.length > 0) {
-                    mileageKm = calculateTotalDistance(pts);
-                }
-
-                const detectedStops = detectStops(pts);
-
-                setTrack(pts);
-                setTotalDistance(mileageKm);
-                setStops(detectedStops);
-                setTrackHtml(buildTrackHtml(pts, theme, 0, detectedStops));
+                setApiMileage(mileageKm);
+                setRawTrack(pts);
             } else {
                 setError('No track data found for this period');
             }
@@ -361,7 +510,7 @@ export default function HistoryScreen() {
         } finally {
             setLoading(false);
         }
-    }, [accessToken, selectedImei, startTime, endTime, theme]);
+    }, [accessToken, selectedImei, startTime, endTime]);
 
     const getSpeedColor = (s: number) => {
         if (s <= 0) return C.offline;
@@ -396,19 +545,36 @@ export default function HistoryScreen() {
                         </Picker>
                     </View>
 
-                    {/* Date range */}
+                    {/* Positioning Mode Picker */}
+                    <Text style={s.label}>{t('history.positionMode')}</Text>
+                    <View style={s.pickerWrap}>
+                        <Picker
+                            selectedValue={positionMode}
+                            onValueChange={(v) => setPositionMode(v as 'all' | 'optimized' | 'precise')}
+                            style={s.picker}
+                            dropdownIconColor={C.textMuted}
+                        >
+                            <Picker.Item label={t('history.positionModeOptions.precise')} value="precise" color={C.textPrimary} />
+                            <Picker.Item label={t('history.positionModeOptions.optimized')} value="optimized" color={C.textPrimary} />
+                            <Picker.Item label={t('history.positionModeOptions.all')} value="all" color={C.textPrimary} />
+                        </Picker>
+                    </View>
+
+                    {/* Date range — tappable to open picker */}
                     <View style={s.dateRow}>
-                        <View style={s.dateField}>
+                        <TouchableOpacity style={s.dateField} onPress={() => openPicker('start')} activeOpacity={0.7}>
                             <Text style={s.label}>{t('history.from').toUpperCase()}</Text>
                             <Text style={s.dateText}>{startTime.slice(0, 10)}</Text>
                             <Text style={s.dateTime}>{startTime.slice(11, 16)}</Text>
-                        </View>
+                            <Feather name="edit-2" size={10} color={C.textMuted} style={{ position: 'absolute', top: 8, right: 8 }} />
+                        </TouchableOpacity>
                         <Text style={[s.dateSep, { color: C.textMuted }]}>→</Text>
-                        <View style={s.dateField}>
+                        <TouchableOpacity style={s.dateField} onPress={() => openPicker('end')} activeOpacity={0.7}>
                             <Text style={s.label}>{t('history.to').toUpperCase()}</Text>
                             <Text style={s.dateText}>{endTime.slice(0, 10)}</Text>
                             <Text style={s.dateTime}>{endTime.slice(11, 16)}</Text>
-                        </View>
+                            <Feather name="edit-2" size={10} color={C.textMuted} style={{ position: 'absolute', top: 8, right: 8 }} />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Quick range buttons */}
@@ -452,6 +618,11 @@ export default function HistoryScreen() {
                     </TouchableOpacity>
 
                     {error && <Text style={s.errorText}>{error}</Text>}
+                    {rawTrack.length > 0 && track.length === 0 && (
+                        <Text style={[s.errorText, { color: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.05)', borderColor: 'rgba(245,158,11,0.2)', borderWidth: 1, padding: 10, borderRadius: 8, marginTop: 8, overflow: 'hidden' }]}>
+                            {t('history.filteredNoDataHint')}
+                        </Text>
+                    )}
                     {track.length > 0 && (
                         <Text style={s.pointCount}><Feather name="check-circle" size={12} color={C.online} /> {track.length} {t('history.pointsLoaded')}</Text>
                     )}
@@ -464,7 +635,11 @@ export default function HistoryScreen() {
                     <View style={s.mapEmpty}>
                         <Feather name="map" size={48} color={C.textMuted} style={{ marginBottom: 12 }} />
                         <Text style={[s.mapEmptyText, { color: C.textMuted }]}>
-                            {loading ? 'Loading track...' : 'Select a device and date range, then tap Load Track'}
+                            {loading
+                                ? 'Loading track...'
+                                : rawTrack.length > 0
+                                    ? t('history.filteredNoDataHint')
+                                    : 'Select a device and date range, then tap Load Track'}
                         </Text>
                         {loading && <ActivityIndicator color={C.accent} style={{ marginTop: 12 }} />}
                     </View>
@@ -633,6 +808,95 @@ export default function HistoryScreen() {
                     </View>
                 </View>
             )}
+
+            {/* ── Date/Time Picker Modal ── */}
+            <Modal
+                visible={showPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowPicker(false)}
+            >
+                <View style={s.modalOverlay}>
+                    <View style={[s.modalSheet, { backgroundColor: C.bgSecondary }]}>
+                        {/* Modal header */}
+                        <View style={s.modalHeader}>
+                            <Text style={[s.modalTitle, { color: C.textPrimary }]}>
+                                {editingField === 'start' ? t('history.from') : t('history.to')}
+                            </Text>
+                            <TouchableOpacity onPress={() => setShowPicker(false)}>
+                                <Feather name="x" size={20} color={C.textMuted} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Picker wheels: Year / Month / Day / Hour / Min */}
+                        <View style={s.pickerRow}>
+                            <View style={s.pickerCol}>
+                                <Text style={[s.pickerColLabel, { color: C.textMuted }]}>Year</Text>
+                                <Picker
+                                    selectedValue={py}
+                                    onValueChange={v => setPy(Number(v))}
+                                    style={{ color: C.textPrimary, width: 90 }}
+                                    dropdownIconColor={C.textMuted}
+                                >
+                                    {years.map(y => <Picker.Item key={y} label={String(y)} value={y} color={C.textPrimary} />)}
+                                </Picker>
+                            </View>
+                            <View style={s.pickerCol}>
+                                <Text style={[s.pickerColLabel, { color: C.textMuted }]}>Month</Text>
+                                <Picker
+                                    selectedValue={pm}
+                                    onValueChange={v => setPm(Number(v))}
+                                    style={{ color: C.textPrimary, width: 80 }}
+                                    dropdownIconColor={C.textMuted}
+                                >
+                                    {months.map(m => <Picker.Item key={m} label={String(m).padStart(2,'0')} value={m} color={C.textPrimary} />)}
+                                </Picker>
+                            </View>
+                            <View style={s.pickerCol}>
+                                <Text style={[s.pickerColLabel, { color: C.textMuted }]}>Day</Text>
+                                <Picker
+                                    selectedValue={pd}
+                                    onValueChange={v => setPd(Number(v))}
+                                    style={{ color: C.textPrimary, width: 80 }}
+                                    dropdownIconColor={C.textMuted}
+                                >
+                                    {days.map(d => <Picker.Item key={d} label={String(d).padStart(2,'0')} value={d} color={C.textPrimary} />)}
+                                </Picker>
+                            </View>
+                            <View style={s.pickerCol}>
+                                <Text style={[s.pickerColLabel, { color: C.textMuted }]}>Hour</Text>
+                                <Picker
+                                    selectedValue={ph}
+                                    onValueChange={v => setPh(Number(v))}
+                                    style={{ color: C.textPrimary, width: 80 }}
+                                    dropdownIconColor={C.textMuted}
+                                >
+                                    {hours.map(h => <Picker.Item key={h} label={String(h).padStart(2,'0')} value={h} color={C.textPrimary} />)}
+                                </Picker>
+                            </View>
+                            <View style={s.pickerCol}>
+                                <Text style={[s.pickerColLabel, { color: C.textMuted }]}>Min</Text>
+                                <Picker
+                                    selectedValue={pmin}
+                                    onValueChange={v => setPmin(Number(v))}
+                                    style={{ color: C.textPrimary, width: 80 }}
+                                    dropdownIconColor={C.textMuted}
+                                >
+                                    {mins.map(m => <Picker.Item key={m} label={String(m).padStart(2,'0')} value={m} color={C.textPrimary} />)}
+                                </Picker>
+                            </View>
+                        </View>
+
+                        {/* Confirm button */}
+                        <TouchableOpacity
+                            style={[s.confirmBtn, { backgroundColor: C.accent }]}
+                            onPress={confirmPicker}
+                        >
+                            <Text style={s.confirmBtnText}>✓  Confirm</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -644,7 +908,7 @@ const styles = (C: any) => StyleSheet.create({
     controls: {
         backgroundColor: C.bgSecondary,
         borderBottomWidth: 1, borderColor: C.border,
-        padding: 12, maxHeight: 260,
+        padding: 12, maxHeight: 320,
     },
     label: {
         fontSize: 10, fontWeight: '700', color: C.textMuted,
@@ -773,5 +1037,33 @@ const styles = (C: any) => StyleSheet.create({
     activeTableRow: { backgroundColor: C.accentDim + '22' },
     tableCell: { fontSize: 12, color: C.textPrimary },
     activeCellText: { color: C.accent, fontWeight: '700' },
+
+    // ── Date Picker Modal styles ──────────────────────────────────────────
+    modalOverlay: {
+        flex: 1, justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    modalSheet: {
+        borderTopLeftRadius: 20, borderTopRightRadius: 20,
+        paddingHorizontal: 16, paddingTop: 14, paddingBottom: 30,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.2, shadowRadius: 12, elevation: 12,
+    },
+    modalHeader: {
+        flexDirection: 'row', justifyContent: 'space-between',
+        alignItems: 'center', marginBottom: 12,
+    },
+    modalTitle: { fontSize: 16, fontWeight: '700' },
+    pickerRow: {
+        flexDirection: 'row', justifyContent: 'space-between',
+        alignItems: 'center', marginBottom: 16,
+    },
+    pickerCol: { alignItems: 'center', flex: 1 },
+    pickerColLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginBottom: 2 },
+    confirmBtn: {
+        borderRadius: 12, paddingVertical: 14,
+        alignItems: 'center', marginTop: 4,
+    },
+    confirmBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
 
