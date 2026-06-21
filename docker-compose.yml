@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  tracking-app:
+    build:
+      context: ./gimi-tracking-app
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+      - ./certbot/www:/var/www/certbot:ro
+    restart: always
+    container_name: traceplus-tracking-app
+    depends_on:
+      - gimi-backend
+
+  gimi-backend:
+    build:
+      context: ./gimi-backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/app/data
+    restart: always
+    container_name: traceplus-gimi-backend
+
+  consumer-app:
+    build:
+      context: ./gimi-consumer-app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+      - ./certbot/www:/var/www/certbot:ro
+    restart: always
+    container_name: traceplus-consumer-app
+
+  certbot:
+    image: certbot/certbot
+    container_name: traceplus-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit 0 SIGTERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
