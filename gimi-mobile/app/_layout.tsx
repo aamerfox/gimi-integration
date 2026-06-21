@@ -1,12 +1,66 @@
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Platform, StyleSheet, Text } from 'react-native';
 import { useAuthStore } from '@/store/auth';
 import { useDeviceStore } from '@/store/devices';
 import { useThemeStore } from '@/store/theme';
 import { useLanguageStore } from '@/store/language';
 import COLORS from '@/constants/Colors';
 import '@/localization/i18n';
+
+// ── Google Fonts ──
+import { 
+  useFonts,
+  Tajawal_400Regular,
+  Tajawal_500Medium,
+  Tajawal_700Bold 
+} from '@expo-google-fonts/tajawal';
+import {
+  Cairo_400Regular,
+  Cairo_500Medium,
+  Cairo_700Bold
+} from '@expo-google-fonts/cairo';
+import {
+  Barlow_400Regular,
+  Barlow_500Medium,
+  Barlow_700Bold
+} from '@expo-google-fonts/barlow';
+
+// Global Font Injection for Arabic (Cairo for Bold headings, Tajawal for Body) and English/Numbers (Barlow)
+const oldRender = (Text as any).render;
+(Text as any).render = function (...args: any[]) {
+  const origin = oldRender.call(this, ...args);
+  const lang = useLanguageStore.getState().language;
+
+  let weight = 'regular';
+  const style = origin.props.style;
+  if (style) {
+    const flatStyle = StyleSheet.flatten(style);
+    if (flatStyle && flatStyle.fontWeight) {
+      const fw = String(flatStyle.fontWeight);
+      if (fw === 'bold' || fw === '700' || fw === '800' || fw === '900') {
+        weight = 'bold';
+      } else if (fw === '500' || fw === '600' || fw === 'medium') {
+        weight = 'medium';
+      }
+    }
+  }
+
+  const fontFamily = lang === 'ar'
+    ? (weight === 'bold' ? 'Cairo_700Bold' : (weight === 'medium' ? 'Tajawal_500Medium' : 'Tajawal_400Regular'))
+    : (weight === 'bold' ? 'Barlow_700Bold' : (weight === 'medium' ? 'Barlow_500Medium' : 'Barlow_400Regular'));
+
+  return React.cloneElement(origin, {
+    style: [
+      { fontFamily },
+      style,
+      // Avoid double-bolding/layout issues on Android when custom fonts are used
+      Platform.OS === 'android' ? { fontWeight: 'normal' } : null,
+    ],
+  });
+};
+
 
 // ── Push Notifications ──
 import { initNotifications, setupNotificationResponseHandler } from '@/services/notifications';
@@ -89,12 +143,24 @@ export default function RootLayout() {
   const C = COLORS[theme];
   const [hydrated, setHydrated] = useState(() => useLanguageStore.persist.hasHydrated());
 
+  const [fontsLoaded] = useFonts({
+    Tajawal_400Regular,
+    Tajawal_500Medium,
+    Tajawal_700Bold,
+    Cairo_400Regular,
+    Cairo_500Medium,
+    Cairo_700Bold,
+    Barlow_400Regular,
+    Barlow_500Medium,
+    Barlow_700Bold,
+  });
+
   useEffect(() => {
     const unsub = useLanguageStore.persist.onFinishHydration(() => setHydrated(true));
     return unsub;
   }, []);
 
-  if (!hydrated) return null; // or a splash screen
+  if (!hydrated || !fontsLoaded) return null; // or a splash screen
 
   return (
     <>
