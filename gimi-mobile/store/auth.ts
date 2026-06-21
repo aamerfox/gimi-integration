@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // SecureStore adapter for Zustand persist — falls back to memory on web
-const secureStorage = {
+export const secureStorage = {
     getItem: async (key: string) => {
         if (Platform.OS === 'web') {
             return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;

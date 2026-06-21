@@ -15,6 +15,22 @@ export const api = axios.create({
     timeout: 15000,
 });
 
+export const customApi = axios.create({
+    baseURL: 'https://tag.traceplus.co/custom-api',
+    timeout: 10000,
+});
+
+customApi.interceptors.request.use((config) => {
+    const { accessToken, userId } = useAuthStore.getState();
+    if (accessToken) {
+        config.headers['x-user-token'] = accessToken;
+    }
+    if (userId) {
+        config.headers['x-user-id'] = userId;
+    }
+    return config;
+});
+
 export const generateSignature = (params: Record<string, string | number | boolean>): string => {
     const sortedKeys = Object.keys(params).sort();
     let paramString = APP_SECRET;

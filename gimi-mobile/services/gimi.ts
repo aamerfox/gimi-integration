@@ -1,4 +1,5 @@
-import { api } from './api';
+import { api, customApi } from './api';
+import { useSimulationStore } from '../store/simulation';
 
 const TAG_APP_KEY = '0310e0f4330f4853a80e1fd9612ca0a7';
 
@@ -30,20 +31,51 @@ const queryOciTrackHistory = async (imei: string, startTime: string, endTime: st
     return res.json();
 };
 
+const isOciToken = (token: string) => token && token.startsWith('oci_token_');
+const isOciImei = (imei: string) => {
+    if (!imei) return false;
+    const customAccounts = useSimulationStore.getState().simulatedChildAccounts;
+    return customAccounts.some(acc => {
+        if (!acc.deviceImei) return false;
+        return acc.deviceImei.split(',').map(s => s.trim()).includes(imei);
+    });
+};
+
 export const gimiService = {
     // 1. Authentication
     login: async (account: string, password_md5: string) => {
-        if (account === 'hertz' && password_md5.toLowerCase() === '80fc588ba13f3af3d64be60ddfd386d8') {
-            return {
-                code: 0,
-                message: 'success',
-                result: {
-                    accessToken: 'hertz_token',
-                    refreshToken: 'hertz_refresh',
-                    expiresIn: 7200,
+        // Query custom backend first
+        try {
+            const res = await customApi.get(`/sub-accounts/${account}`);
+            if (res.data && res.data.code === 0 && res.data.result) {
+                const acc = res.data.result;
+                if (acc.passwordMd5?.toLowerCase() === password_md5.toLowerCase()) {
+                    // Populate local store with SQLite data
+                    try {
+                        const allRes = await customApi.get('/sub-accounts');
+                        if (allRes.data && allRes.data.code === 0 && Array.isArray(allRes.data.result)) {
+                            useSimulationStore.getState().setSimulatedChildAccounts(allRes.data.result);
+                        }
+                    } catch (e) {
+                        console.error('Failed to sync custom sub-accounts from backend:', e);
+                    }
+
+                    return {
+                        code: 0,
+                        message: 'success',
+                        result: {
+                            accessToken: `oci_token_${acc.accountId}`,
+                            refreshToken: `oci_refresh_${acc.accountId}`,
+                            expiresIn: 7200,
+                        }
+                    };
                 }
-            };
+            }
+        } catch (err) {
+            console.log('Account not in custom database or backend offline, checking TrackSolid...', err);
         }
+
+        // Fallback to standard TrackSolid API
         return api.post('', {
             method: 'jimi.oauth.token.get',
             user_id: account,
@@ -54,23 +86,43 @@ export const gimiService = {
 
     // 2. Device List
     getDeviceList: async (accessToken: string, targetAccount: string) => {
-        if (accessToken === 'hertz_token' || targetAccount === 'hertz') {
+        // Sync custom sub-accounts from SQLite backend first to keep the Zustand store up to date
+        try {
+            const allRes = await customApi.get('/sub-accounts');
+            if (allRes.data && allRes.data.code === 0 && Array.isArray(allRes.data.result)) {
+                useSimulationStore.getState().setSimulatedChildAccounts(allRes.data.result);
+            }
+        } catch (e) {
+            console.error('Failed to sync custom sub-accounts from backend:', e);
+        }
+
+        const customAccounts = useSimulationStore.getState().simulatedChildAccounts;
+        const isCustomTarget = customAccounts.some(acc => acc.accountId.toLowerCase() === targetAccount.toLowerCase());
+
+        if (isOciToken(accessToken) || targetAccount === 'hertz' || targetAccount.startsWith('oci_token_') || isCustomTarget) {
+            const accountId = isOciToken(accessToken) ? accessToken.replace('oci_token_', '') : targetAccount;
+            const matched = customAccounts.find(acc => acc.accountId.toLowerCase() === accountId.toLowerCase());
+            const mappedImeisString = matched?.deviceImei || '781950640051748';
+            const mappedImeis = mappedImeisString.split(',').map(s => s.trim()).filter(Boolean);
+
+            const result = mappedImeis.map((imei, idx) => ({
+                imei,
+                deviceName: matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)',
+                mcType: 'Tag',
+                sim: 'N/A',
+                expiration: '2030-01-01 00:00:00',
+                activationTime: '2026-06-18 12:00:00',
+                reMark: 'OCI Tag Integration',
+                vehicleName: matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : matched.nickName) : 'Hertz Tag',
+                vehicleIcon: 'automobile',
+                enabledFlag: 1,
+                status: 'NORMAL'
+            }));
+
             return {
                 code: 0,
                 message: 'success',
-                result: [{
-                    imei: '781950640051748',
-                    deviceName: 'Hertz Device (OCI)',
-                    mcType: 'Tag',
-                    sim: 'N/A',
-                    expiration: '2030-01-01 00:00:00',
-                    activationTime: '2026-06-18 12:00:00',
-                    reMark: 'OCI Tag Integration',
-                    vehicleName: 'Hertz Tag',
-                    vehicleIcon: 'automobile',
-                    enabledFlag: 1,
-                    status: 'NORMAL'
-                }]
+                result
             };
         }
         return api.post('', {
@@ -82,17 +134,24 @@ export const gimiService = {
 
     // 3. Live Location
     getDevicesLocation: async (accessToken: string, targetAccount: string) => {
-        if (accessToken === 'hertz_token' || targetAccount === 'hertz') {
-            try {
-                const ociRes = await queryOciLatestPoint('781950640051748');
-                if (ociRes && ociRes.code === 0 && ociRes.data) {
-                    const d = ociRes.data;
-                    return {
-                        code: 0,
-                        message: 'success',
-                        result: [{
-                            imei: '781950640051748',
-                            deviceName: 'Hertz Device (OCI)',
+        if (isOciToken(accessToken) || targetAccount === 'hertz' || targetAccount.startsWith('oci_token_')) {
+            const accountId = accessToken.replace('oci_token_', '');
+            const customAccounts = useSimulationStore.getState().simulatedChildAccounts;
+            const matched = customAccounts.find(acc => acc.accountId === accountId);
+            const mappedImeisString = matched?.deviceImei || '781950640051748';
+            const mappedImeis = mappedImeisString.split(',').map(s => s.trim()).filter(Boolean);
+
+            const result = [];
+            for (let idx = 0; idx < mappedImeis.length; idx++) {
+                const imei = mappedImeis[idx];
+                const devName = matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)';
+                try {
+                    const ociRes = await queryOciLatestPoint(imei);
+                    if (ociRes && ociRes.code === 0 && ociRes.data) {
+                        const d = ociRes.data;
+                        result.push({
+                            imei,
+                            deviceName: devName,
                             mcType: 'Tag',
                             icon: 'automobile',
                             status: '1',
@@ -102,28 +161,33 @@ export const gimiService = {
                             speed: 0,
                             gpsTime: formatGpsTime(d.timestamp),
                             accStatus: '1'
-                        }]
-                    };
+                        });
+                        continue;
+                    }
+                } catch (e) {
+                    console.error(`Failed to query OCI latest-point for ${imei}:`, e);
                 }
-            } catch (e) {
-                console.error('Failed to query OCI latest-point for Hertz:', e);
-            }
-            return {
-                code: 0,
-                message: 'success',
-                result: [{
-                    imei: '781950640051748',
-                    deviceName: 'Hertz Device (OCI)',
+
+                // Fallback coordinate, slightly offset to avoid stacking
+                result.push({
+                    imei,
+                    deviceName: devName,
                     mcType: 'Tag',
                     icon: 'automobile',
                     status: '1',
                     posType: 'GPS',
-                    lat: 24.705177,
-                    lng: 46.71977,
+                    lat: 24.705177 + (idx * 0.005),
+                    lng: 46.71977 + (idx * 0.005),
                     speed: 0,
                     gpsTime: '2026-06-18 12:00:00',
                     accStatus: '1'
-                }]
+                });
+            }
+
+            return {
+                code: 0,
+                message: 'success',
+                result
             };
         }
         return api.post('', {
@@ -136,17 +200,30 @@ export const gimiService = {
 
     // 3b. Device Location
     getDeviceLocation: async (accessToken: string, imei: string) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
+            const customAccounts = useSimulationStore.getState().simulatedChildAccounts;
+            const matched = customAccounts.find(acc => {
+                if (accessToken === `oci_token_${acc.accountId}`) return true;
+                if (!acc.deviceImei) return false;
+                return acc.deviceImei.split(',').map(s => s.trim()).includes(imei);
+            });
+            
+            let targetImei = imei;
+            if (!targetImei && matched?.deviceImei) {
+                targetImei = matched.deviceImei.split(',')[0].trim();
+            }
+            if (!targetImei) targetImei = '781950640051748';
+
             try {
-                const ociRes = await queryOciLatestPoint('781950640051748');
+                const ociRes = await queryOciLatestPoint(targetImei);
                 if (ociRes && ociRes.code === 0 && ociRes.data) {
                     const d = ociRes.data;
                     return {
                         code: 0,
                         message: 'success',
                         result: {
-                            imei: '781950640051748',
-                            deviceName: 'Hertz Device (OCI)',
+                            imei: targetImei,
+                            deviceName: matched ? `${matched.nickName} Device` : 'OCI Device',
                             mcType: 'Tag',
                             icon: 'automobile',
                             status: '1',
@@ -160,14 +237,14 @@ export const gimiService = {
                     };
                 }
             } catch (e) {
-                console.error('Failed to query OCI latest-point for Hertz:', e);
+                console.error('Failed to query OCI latest-point:', e);
             }
             return {
                 code: 0,
                 message: 'success',
                 result: {
-                    imei: '781950640051748',
-                    deviceName: 'Hertz Device (OCI)',
+                    imei: targetImei,
+                    deviceName: matched ? `${matched.nickName} Device` : 'OCI Device',
                     mcType: 'Tag',
                     icon: 'automobile',
                     status: '1',
@@ -195,9 +272,22 @@ export const gimiService = {
         beginTime: string,
         endTime: string
     ) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
+            const customAccounts = useSimulationStore.getState().simulatedChildAccounts;
+            const matched = customAccounts.find(acc => {
+                if (accessToken === `oci_token_${acc.accountId}`) return true;
+                if (!acc.deviceImei) return false;
+                return acc.deviceImei.split(',').map(s => s.trim()).includes(imei);
+            });
+            
+            let targetImei = imei;
+            if (!targetImei && matched?.deviceImei) {
+                targetImei = matched.deviceImei.split(',')[0].trim();
+            }
+            if (!targetImei) targetImei = '781950640051748';
+
             try {
-                const ociRes = await queryOciTrackHistory('781950640051748', beginTime, endTime);
+                const ociRes = await queryOciTrackHistory(targetImei, beginTime, endTime);
                 if (ociRes && ociRes.code === 0 && Array.isArray(ociRes.data)) {
                     const points = ociRes.data.map((pt: any) => ({
                         lat: pt.lat,
@@ -214,7 +304,7 @@ export const gimiService = {
                     };
                 }
             } catch (e) {
-                console.error('Failed to query OCI track history for Hertz:', e);
+                console.error('Failed to query OCI track history:', e);
             }
             return {
                 code: 0,
@@ -239,7 +329,7 @@ export const gimiService = {
         beginTime: string,
         endTime: string
     ) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
             return { code: 0, message: 'success', result: [] };
         }
         return api.post('', {
@@ -261,7 +351,7 @@ export const gimiService = {
         startRow = 1,
         pageSize = 100
     ) => {
-        if (accessToken === 'hertz_token' || imeis === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imeis)) {
             return { code: 0, message: 'success', result: [] };
         }
         return api.post('', {
@@ -279,7 +369,7 @@ export const gimiService = {
 
     // 5. Geofences — List
     getGeofences: async (accessToken: string, account: string) => {
-        if (accessToken === 'hertz_token' || account === 'hertz') {
+        if (isOciToken(accessToken) || account === 'hertz' || account.startsWith('oci_token_')) {
             return { code: 0, message: 'success', result: [] };
         }
         return api.post('', {
@@ -291,7 +381,7 @@ export const gimiService = {
 
     // 5b. Geofences — Device-level List
     getDeviceFences: async (accessToken: string, imei: string) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
             return { code: 0, message: 'success', result: [] };
         }
         return api.post('', {
@@ -312,7 +402,7 @@ export const gimiService = {
         alarmType: 'in' | 'out' | 'in,out',
         alarmSwitch: 'ON' | 'OFF' = 'ON'
     ) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
             return { code: 0, message: 'success', result: {} };
         }
         return api.post('', {
@@ -333,7 +423,7 @@ export const gimiService = {
 
     // 7. Geofences — Delete
     deleteDeviceFence: async (accessToken: string, imei: string, fenceSerialNo: string) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
             return { code: 0, message: 'success', result: {} };
         }
         return api.post('', {
@@ -353,7 +443,7 @@ export const gimiService = {
         pageNo = 1,
         pageSize = 50
     ) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
             return { code: 0, message: 'success', result: [] };
         }
         return api.post('', {
@@ -369,7 +459,7 @@ export const gimiService = {
 
     // 9. Update Device Name
     updateDeviceName: async (accessToken: string, imei: string, newName: string) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
             return { code: 0, message: 'success', result: {} };
         }
         return api.post('', {
@@ -382,7 +472,7 @@ export const gimiService = {
 
     // 10. Send Device Command
     sendDeviceCommand: async (accessToken: string, imei: string, command: string) => {
-        if (accessToken === 'hertz_token' || imei === '781950640051748') {
+        if (isOciToken(accessToken) || isOciImei(imei)) {
             return { code: 0, message: 'success', result: {} };
         }
         return api.post('', {
