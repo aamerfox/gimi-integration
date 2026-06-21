@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, customApi } from './api';
 import { useSimulationStore } from '../store/simulation';
 
 const TAG_APP_KEY = '0310e0f4330f4853a80e1fd9612ca0a7';
@@ -53,23 +53,38 @@ const isOciImei = (imei: string) => {
 export const gimiService = {
     // 1. Authentication
     login: async (account: string, password_md5: string) => {
-        const customAccounts = useSimulationStore.getState().simulatedChildAccounts;
-        const matched = customAccounts.find(
-            (acc) => acc.accountId.toLowerCase() === account.toLowerCase() && 
-                     acc.passwordMd5?.toLowerCase() === password_md5.toLowerCase()
-        );
+        // Query custom backend first
+        try {
+            const res = await customApi.get(`/sub-accounts/${account}`);
+            if (res.data && res.data.code === 0 && res.data.result) {
+                const acc = res.data.result;
+                if (acc.passwordMd5?.toLowerCase() === password_md5.toLowerCase()) {
+                    // Populate local store with SQLite data
+                    try {
+                        const allRes = await customApi.get('/sub-accounts');
+                        if (allRes.data && allRes.data.code === 0 && Array.isArray(allRes.data.result)) {
+                            useSimulationStore.setState({ simulatedChildAccounts: allRes.data.result });
+                        }
+                    } catch (e) {
+                        console.error('Failed to sync custom sub-accounts from backend:', e);
+                    }
 
-        if (matched) {
-            return {
-                code: 0,
-                message: 'success',
-                result: {
-                    accessToken: `oci_token_${matched.accountId}`,
-                    refreshToken: `oci_refresh_${matched.accountId}`,
-                    expiresIn: 7200,
+                    return {
+                        code: 0,
+                        message: 'success',
+                        result: {
+                            accessToken: `oci_token_${acc.accountId}`,
+                            refreshToken: `oci_refresh_${acc.accountId}`,
+                            expiresIn: 7200,
+                        }
+                    };
                 }
-            };
+            }
+        } catch (err) {
+            console.log('Account not in custom database or backend offline, checking TrackSolid...', err);
         }
+
+        // Fallback to standard TrackSolid API
         return api.post('', {
             method: 'jimi.oauth.token.get',
             user_id: account,
@@ -80,10 +95,12 @@ export const gimiService = {
 
     // 2. Device List
     getDeviceList: async (accessToken: string, targetAccount: string) => {
-        if (isOciToken(accessToken) || targetAccount === 'hertz' || targetAccount.startsWith('oci_token_')) {
-            const accountId = accessToken.replace('oci_token_', '');
-            const customAccounts = useSimulationStore.getState().simulatedChildAccounts;
-            const matched = customAccounts.find(acc => acc.accountId === accountId);
+        const customAccounts = useSimulationStore.getState().simulatedChildAccounts;
+        const isCustomTarget = customAccounts.some(acc => acc.accountId.toLowerCase() === targetAccount.toLowerCase());
+
+        if (isOciToken(accessToken) || targetAccount === 'hertz' || targetAccount.startsWith('oci_token_') || isCustomTarget) {
+            const accountId = isOciToken(accessToken) ? accessToken.replace('oci_token_', '') : targetAccount;
+            const matched = customAccounts.find(acc => acc.accountId.toLowerCase() === accountId.toLowerCase());
             const mappedImeisString = matched?.deviceImei || '781950640051748';
             const mappedImeis = mappedImeisString.split(',').map(s => s.trim()).filter(Boolean);
 
@@ -113,6 +130,7 @@ export const gimiService = {
             target: targetAccount,
         });
     },
+
 
     // 3. Live Location
     getDevicesLocation: async (accessToken: string, targetAccount: string) => {
@@ -546,11 +564,31 @@ export const gimiService = {
 
     // 13. List Child Accounts
     getChildAccounts: async (accessToken: string, targetAccount: string) => {
-        const response = (await api.post('', {
-            method: 'jimi.user.child.list',
-            access_token: accessToken,
-            target: targetAccount,
-        })) as any;
+        // Sync custom sub-accounts from SQLite backend first to keep the Zustand store up to date
+        try {
+            const allRes = await customApi.get('/sub-accounts');
+            if (allRes.data && allRes.data.code === 0 && Array.isArray(allRes.data.result)) {
+                useSimulationStore.setState({ simulatedChildAccounts: allRes.data.result });
+            }
+        } catch (e) {
+            console.error('Failed to sync custom sub-accounts from backend:', e);
+        }
+
+        let response: any;
+        try {
+            response = (await api.post('', {
+                method: 'jimi.user.child.list',
+                access_token: accessToken,
+                target: targetAccount,
+            })) as any;
+        } catch (apiErr) {
+            console.warn('Jimi API child list rate-limited or failed, using local/custom sub-accounts:', apiErr);
+            response = {
+                code: 0,
+                message: 'success (local fallback)',
+                result: []
+            };
+        }
         
         // Inject all custom sub-accounts from the store if target is saudiextest
         if (targetAccount === 'saudiextest' && response && response.code === 0 && Array.isArray(response.result)) {

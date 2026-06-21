@@ -22,6 +22,11 @@ export default defineConfig({
         target: 'http://84.8.100.152:9998',
         changeOrigin: true,
       },
+      '/custom-api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/custom-api/, '/api'),
+      },
     },
   },
 })

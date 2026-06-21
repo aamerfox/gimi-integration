@@ -7,6 +7,7 @@ import { useSimulationStore } from '@/store/simulation';
 import type { ChildAccount } from '@/store/simulation';
 import { useAuthStore } from '@/store/auth';
 import { gimiService } from '@/services/gimi';
+import { customApi } from '@/services/api';
 import MD5 from 'crypto-js/md5';
 
 const Settings = () => {
@@ -31,6 +32,7 @@ const Settings = () => {
     } = useSimulationStore();
     
     const { accessToken, userId } = useAuthStore();
+    const isAdmin = !!(accessToken && !accessToken.startsWith('oci_token_') && (userId?.toLowerCase() === 'saudiextest' || userId?.toLowerCase() === 'saudiextest1'));
 
     // Form state for creating/editing sub-accounts
     const [showAddForm, setShowAddForm] = useState(false);
@@ -82,10 +84,10 @@ const Settings = () => {
     };
 
     useEffect(() => {
-        if (showPermissions) {
+        if (showPermissions && isAdmin) {
             fetchChildAccounts();
         }
-    }, [showPermissions, accessToken, userId, simulatedChildAccounts]);
+    }, [showPermissions, accessToken, userId, isAdmin]);
 
     useEffect(() => {
         // Self-heal: ensure the default hertz account is present in local storage
@@ -118,23 +120,38 @@ const Settings = () => {
             return;
         }
 
-        if (isSimulatedOperator) {
-            setErrorMsg('Permission Denied: Sub-accounts cannot modify other child accounts.');
+        if (!isAdmin) {
+            setErrorMsg('Permission Denied: Only the main admin account can modify sub-accounts.');
             return;
         }
 
         const currentUserId = userId || 'admin';
         try {
             if (editingAccountId) {
-                // Editing existing custom account (local)
-                const existing = simulatedChildAccounts.find(acc => acc.accountId === editingAccountId);
+                // Editing existing custom account (local + custom backend)
+                const isCustom = simulatedChildAccounts.some(acc => acc.accountId.toLowerCase() === editingAccountId.toLowerCase());
+                const existing = simulatedChildAccounts.find(acc => acc.accountId.toLowerCase() === editingAccountId.toLowerCase());
+                const pwdMd5 = password ? MD5(password).toString() : existing?.passwordMd5;
+
+                if (isCustom) {
+                    await customApi.post('/sub-accounts', {
+                        accountId: editingAccountId,
+                        nickName,
+                        email,
+                        telephone: telephone || undefined,
+                        roleName: 'End User (Read-Only)',
+                        passwordMd5: pwdMd5,
+                        deviceImei: deviceImei || undefined,
+                    });
+                }
+
                 const updatedAccount: ChildAccount = {
                     accountId: editingAccountId,
                     nickName,
                     email,
                     telephone: telephone || undefined,
                     roleName: 'End User (Read-Only)',
-                    passwordMd5: password ? MD5(password).toString() : existing?.passwordMd5,
+                    passwordMd5: pwdMd5,
                     deviceImei: deviceImei || undefined,
                 };
                 updateChildAccount(updatedAccount);
@@ -142,9 +159,9 @@ const Settings = () => {
                 setSuccessMsg(`Successfully updated child account "${editingAccountId}"!`);
             } else {
                 // Creating new account
+                const passwordMd5 = MD5(password).toString();
                 if (accessToken && !deviceImei) {
                     // Call the TrackSolid Pro Open API
-                    const passwordMd5 = MD5(password).toString();
                     const res = await gimiService.createChildAccount(
                         accessToken,
                         accountId,
@@ -158,6 +175,17 @@ const Settings = () => {
                     if (res && res.code !== 0) {
                         throw new Error(res.message || `Error code ${res.code}`);
                     }
+                } else if (deviceImei) {
+                    // Save to our custom SQLite backend
+                    await customApi.post('/sub-accounts', {
+                        accountId,
+                        nickName,
+                        email,
+                        telephone: telephone || undefined,
+                        roleName: 'End User (Read-Only)',
+                        passwordMd5,
+                        deviceImei,
+                    });
                 }
                 
                 // Add account locally for interactive simulation
@@ -167,7 +195,7 @@ const Settings = () => {
                     email,
                     telephone: telephone || undefined,
                     roleName: 'End User (Read-Only)',
-                    passwordMd5: MD5(password).toString(),
+                    passwordMd5,
                     deviceImei: deviceImei || undefined,
                 };
                 addChildAccount(newAccount);
@@ -197,25 +225,34 @@ const Settings = () => {
         }
     };
 
-    const handleDeleteSubAccount = (accId: string) => {
-        if (isSimulatedOperator) {
-            alert(language === 'ar' ? 'خطأ: لا يملك هذا الحساب صلاحية حذف الحسابات الفرعية.' : 'Error: Sub-accounts cannot delete child accounts.');
+    const handleDeleteSubAccount = async (accId: string) => {
+        if (!isAdmin) {
+            alert(language === 'ar' ? 'خطأ: لا يملك هذا الحساب صلاحية حذف الحسابات الفرعية.' : 'Error: Only the main admin account can delete child accounts.');
             return;
         }
         const confirmMsg = language === 'ar' 
             ? `هل أنت متأكد أنك تريد حذف الحساب الفرعي "${accId}"؟`
             : `Are you sure you want to delete sub-account "${accId}"?`;
         if (window.confirm(confirmMsg)) {
+            // Delete from SQLite backend if it exists
+            const isCustom = simulatedChildAccounts.some(acc => acc.accountId.toLowerCase() === accId.toLowerCase());
+            if (isCustom) {
+                try {
+                    await customApi.delete(`/sub-accounts/${accId}`);
+                } catch (e) {
+                    console.error('Failed to delete sub-account from SQLite backend:', e);
+                }
+            }
             deleteChildAccount(accId);
             addLog('Delete Sub-Account', userId || 'admin', 'Success', `Deleted custom account: ${accId}`);
             setSuccessMsg(language === 'ar' ? `تم حذف الحساب "${accId}" بنجاح!` : `Successfully deleted account "${accId}"!`);
-            fetchChildAccounts();
+            await fetchChildAccounts();
         }
     };
 
     const handleStartEdit = (account: ChildAccount) => {
-        if (isSimulatedOperator) {
-            alert(language === 'ar' ? 'خطأ: لا يملك هذا الحساب صلاحية تعديل الحسابات الفرعية.' : 'Error: Sub-accounts cannot modify child accounts.');
+        if (!isAdmin) {
+            alert(language === 'ar' ? 'خطأ: لا يملك هذا الحساب صلاحية تعديل الحسابات الفرعية.' : 'Error: Only the main admin account can modify child accounts.');
             return;
         }
         setEditingAccountId(account.accountId);
@@ -228,8 +265,8 @@ const Settings = () => {
         setShowAddForm(true);
     };
 
-    // Render Sub-View if active
-    if (showPermissions) {
+    // Render Sub-View if active and admin
+    if (showPermissions && isAdmin) {
         return (
             <div style={{ padding: '24px', maxWidth: '640px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', height: '100%', overflowY: 'auto' }}>
                 {/* Header */}
@@ -792,31 +829,33 @@ const Settings = () => {
 
             {/* Users & App Themes */}
             <div className="glass-panel" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <button 
-                    onClick={() => setShowPermissions(true)}
-                    style={{
-                        background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)',
-                        cursor: 'pointer', width: '100%', padding: '16px', display: 'flex',
-                        alignItems: 'center', justifyContent: 'space-between', color: 'inherit'
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.15)', color: 'var(--accent)', display: 'flex' }}>
-                            <Shield size={18} />
+                {isAdmin && (
+                    <button 
+                        onClick={() => setShowPermissions(true)}
+                        style={{
+                            background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)',
+                            cursor: 'pointer', width: '100%', padding: '16px', display: 'flex',
+                            alignItems: 'center', justifyContent: 'space-between', color: 'inherit'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ padding: '8px', borderRadius: 'var(--radius-sm)', background: 'rgba(0,0,0,0.15)', color: 'var(--accent)', display: 'flex' }}>
+                                <Shield size={18} />
+                            </div>
+                            <div style={{ textAlign: 'start' }}>
+                                <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '14px' }}>
+                                    {language === 'ar' ? 'المستخدمون والصلاحيات' : 'Users & Permissions'}
+                                </p>
+                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                    {language === 'ar' ? 'إدارة مستخدمي المعاينة وصلاحياتهم وسجلات النشاط' : 'Manage preview users, permissions, and activity logs'}
+                                </p>
+                            </div>
                         </div>
-                        <div style={{ textAlign: 'start' }}>
-                            <p style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '14px' }}>
-                                {language === 'ar' ? 'المستخدمون والصلاحيات' : 'Users & Permissions'}
-                            </p>
-                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                {language === 'ar' ? 'إدارة مستخدمي المعاينة وصلاحياتهم وسجلات النشاط' : 'Manage preview users, permissions, and activity logs'}
-                            </p>
-                        </div>
-                    </div>
-                    <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} className="rtl-flip" />
-                </button>
+                        <ChevronRight size={18} style={{ color: 'var(--text-muted)' }} className="rtl-flip" />
+                    </button>
+                )}
                 
                 <div style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>

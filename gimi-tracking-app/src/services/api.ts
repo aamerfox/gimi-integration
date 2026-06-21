@@ -21,6 +21,27 @@ export const api = axios.create({
     timeout: 15000,
 });
 
+let CUSTOM_BASE_URL = '/custom-api';
+if (Capacitor.isNativePlatform()) {
+    CUSTOM_BASE_URL = 'https://tag.traceplus.co/custom-api';
+}
+
+export const customApi = axios.create({
+    baseURL: CUSTOM_BASE_URL,
+    timeout: 10000,
+});
+
+customApi.interceptors.request.use((config) => {
+    const { accessToken, userId } = useAuthStore.getState();
+    if (accessToken) {
+        config.headers['x-user-token'] = accessToken;
+    }
+    if (userId) {
+        config.headers['x-user-id'] = userId;
+    }
+    return config;
+});
+
 // Helper to generate signature
 // Sign = MD5(app_secret + sorted(key+value) + app_secret).toUpperCase()
 export const generateSignature = (params: Record<string, any>): string => {
