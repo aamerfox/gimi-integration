@@ -344,6 +344,7 @@ export default function AlertsScreen() {
                         keyExtractor={a => a.alarmId}
                         renderItem={renderAlarm}
                         showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 90 }}
                         onEndReached={() => { if (paged.length < filteredAlarms.length) setPage(p => p + 1); }}
                         onEndReachedThreshold={0.3}
                         ListEmptyComponent={
@@ -369,6 +370,7 @@ export default function AlertsScreen() {
                         keyExtractor={(e, i) => `${e.fenceId}-${i}`}
                         renderItem={renderEvent}
                         showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 90 }}
                         ListEmptyComponent={
                             <Text style={[s.emptyText, { color: C.textMuted }]}>No geofence events recorded</Text>
                         }
@@ -389,6 +391,7 @@ export default function AlertsScreen() {
                         keyExtractor={r => r.id}
                         renderItem={renderRule}
                         showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 90 }}
                         ListEmptyComponent={
                             <View style={s.emptyRules}>
                                 <Feather name="settings" size={40} color={C.textMuted} style={{ marginBottom: 8 }} />

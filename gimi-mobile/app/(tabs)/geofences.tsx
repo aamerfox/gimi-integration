@@ -326,6 +326,7 @@ export default function GeofencesScreen() {
                         keyExtractor={f => f.fenceId}
                         style={s.list}
                         showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 90 }}
                         ListEmptyComponent={
                             <Text style={[s.emptyText, { color: C.textMuted }]}>
                                 {loading ? 'Loading...' : 'No geofences yet. Tap ➕ Create.'}
@@ -362,7 +363,7 @@ export default function GeofencesScreen() {
             {/* ── Create form */}
             {viewMode === 'create' && (
                 <View style={s.panel}>
-                    <ScrollView showsVerticalScrollIndicator={false}>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
                         <Text style={s.formLabel}>FENCE NAME *</Text>
                         <TextInput style={s.input} value={newName} onChangeText={setNewName}
                             placeholder="e.g. Office Zone" placeholderTextColor={C.textMuted} />

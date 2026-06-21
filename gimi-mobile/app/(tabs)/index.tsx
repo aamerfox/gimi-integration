@@ -16,9 +16,9 @@ import DeviceMap from '@/components/DeviceMap';
 import { useTranslation } from 'react-i18next';
 import { formatGimiTime, isRecent } from '@/utils/time';
 import { Feather } from '@expo/vector-icons';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 // Types for API responses
-// The TrackSolid API returns `result` as a flat Device array (not { deviceList: [] })
 interface ApiDeviceListResult {
   result?: Device[];
 }
@@ -70,6 +70,23 @@ export default function LiveMapScreen() {
   const [search, setSearch] = useState('');
   const [panelVisible, setPanelVisible] = useState(true);
   const [forceUpdate, setForceUpdate] = useState(0); // Forcing re-render on lang change
+
+  // Reanimated values for Bottom Sheet
+  const translateY = useSharedValue(0);
+
+  useEffect(() => {
+    // When panel is visible, offset is 0; when hidden, it slides down leaving 52px visible
+    translateY.value = withSpring(panelVisible ? 0 : 288, {
+      damping: 18,
+      stiffness: 100,
+    });
+  }, [panelVisible]);
+
+  const animatedPanelStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: translateY.value }],
+    };
+  });
 
   // Grouping state
   const { groups, deviceGroupMap, addGroup, removeGroup, assignDeviceToGroup } = useGroupStore();
@@ -158,7 +175,7 @@ export default function LiveMapScreen() {
     }
   };
 
-  const s = styles(C);
+  const s = styles(C, theme);
 
   // ── Device panel item
   const renderDevice = ({ item }: { item: Device }) => {
@@ -235,11 +252,11 @@ export default function LiveMapScreen() {
         <View style={s.statsRow}>
           <View style={s.statChip}>
             <View style={[s.dotSmall, { backgroundColor: C.online }]} />
-            <Text style={s.statText}>{onlineCount} Online</Text>
+            <Text style={s.statText}>{onlineCount} {t('dashboard.online') || 'Online'}</Text>
           </View>
           <View style={s.statChip}>
             <View style={[s.dotSmall, { backgroundColor: C.offline }]} />
-            <Text style={s.statText}>{devices.length - onlineCount} Offline</Text>
+            <Text style={s.statText}>{devices.length - onlineCount} {t('dashboard.offline') || 'Offline'}</Text>
           </View>
           {loading && <ActivityIndicator size="small" color={C.accent} style={{ marginLeft: 8 }} />}
         </View>
@@ -247,122 +264,121 @@ export default function LiveMapScreen() {
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {/* Language toggle */}
           <TouchableOpacity style={s.themeBtn} onPress={() => setLanguage(language === 'en' ? 'ar' : 'en')}>
-            <Text style={[s.themeBtnText, { fontSize: 13, fontWeight: '700' }]}>{language === 'en' ? 'عربي' : 'EN'}</Text>
+            <Text style={[s.themeBtnText, { fontSize: 12, fontWeight: '700', color: C.textPrimary }]}>{language === 'en' ? 'عربي' : 'EN'}</Text>
           </TouchableOpacity>
 
           {/* Theme toggle */}
           <TouchableOpacity style={s.themeBtn} onPress={toggleTheme}>
-            <Feather name={theme === 'dark' ? 'sun' : 'moon'} size={20} color={C.textPrimary} />
+            <Feather name={theme === 'dark' ? 'sun' : 'moon'} size={18} color={C.textPrimary} />
           </TouchableOpacity>
 
           {/* Logout button */}
           <TouchableOpacity style={s.themeBtn} onPress={handleLogout}>
-            <Feather name="log-out" size={20} color={C.danger} />
+            <Feather name="log-out" size={18} color={C.danger} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* ── Device panel toggle ── */}
-      <TouchableOpacity
-        style={[s.panelToggle, { bottom: panelVisible ? 320 : 0 }]}
-        onPress={() => setPanelVisible((v) => !v)}
-      >
-        <Text style={s.panelToggleText}>{panelVisible ? '▼ Devices' : '▲ Devices'}</Text>
-      </TouchableOpacity>
+      {/* ── Device panel (spring bottom sheet style) ── */}
+      <Animated.View style={[s.panel, animatedPanelStyle]}>
+        {/* Drag / Pull Handle Area */}
+        <Pressable style={s.panelHandle} onPress={() => setPanelVisible((v) => !v)}>
+          <View style={s.handleBar} />
+          <Text style={s.panelToggleText}>
+            {panelVisible ? '▼ ' + (t('map.hideDevices') || 'Hide Devices') : '▲ ' + (t('map.showDevices') || 'Show Devices')}
+          </Text>
+        </Pressable>
 
-      {/* ── Device panel (bottom sheet style) ── */}
-      {panelVisible && (
-        <View style={s.panel}>
-          {/* Search */}
-          <View style={s.searchRow}>
-            <TextInput
-              style={s.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search devices..."
-              placeholderTextColor={C.textMuted}
-            />
-            <TouchableOpacity onPress={() => setShowAddGroupModal(true)} style={s.refreshBtn}>
-              <Text style={s.refreshBtnText}>+</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={fetchLocations} style={s.refreshBtn}>
-              <Text style={s.refreshBtnText}>⟳</Text>
-            </TouchableOpacity>
-          </View>
-
-          {error && (
-            <Text style={s.errorText}>{error}</Text>
-          )}
-
-          {/* Selected device detail */}
-          {selectedDevice && (
-            <View style={s.selectedCard}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={s.selectedCardInner}>
-                  <Text style={s.selectedName}>{selectedDevice.deviceName}</Text>
-                  <Text style={s.selectedMeta}><Feather name="radio" size={12} color={C.textSecondary} /> {selectedDevice.imei}</Text>
-                  <Text style={s.selectedMeta}><Feather name="navigation" size={12} color={C.textSecondary} /> {selectedDevice.speed ?? 0} km/h</Text>
-                  {selectedDevice.lat && (
-                    <Text style={s.selectedMeta}>
-                      <Feather name="map-pin" size={12} color={C.textSecondary} /> {selectedDevice.lat?.toFixed(5)}, {selectedDevice.lng?.toFixed(5)}
-                    </Text>
-                  )}
-                  {selectedDevice.batteryPowerVal && (
-                    <Text style={s.selectedMeta}><Feather name="battery" size={12} color={C.textSecondary} /> {selectedDevice.batteryPowerVal}%</Text>
-                  )}
-                  <Text style={s.selectedMeta}><Feather name="clock" size={12} color={C.textSecondary} /> {formatGimiTime(selectedDevice.sysTime || selectedDevice.gpsTime)}</Text>
-                  
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: `${C.accent}20`,
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
-                      borderRadius: 8,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      marginLeft: 4
-                    }}
-                    onPress={() => handleRingTag(selectedDevice)}
-                    disabled={ringingImei === selectedDevice.imei}
-                  >
-                    {ringingImei === selectedDevice.imei ? (
-                      <ActivityIndicator size="small" color={C.accent} style={{ transform: [{ scale: 0.8 }] }} />
-                    ) : (
-                      <Feather name="bell" size={12} color={C.accent} />
-                    )}
-                    <Text style={{ color: C.accent, fontSize: 12, fontWeight: '700' }}>
-                      {t('map.ringTag')}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={s.clearBtn} onPress={() => selectDevice(null)}>
-                    <Text style={s.clearBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Device list */}
-          <SectionList
-            sections={sections}
-            keyExtractor={(d) => d.imei}
-            renderItem={({ item, section }) => {
-              if (expandedGroups[section.id] === false) return null;
-              return renderDevice({ item });
-            }}
-            renderSectionHeader={renderSectionHeader}
-            style={s.list}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <Text style={[s.emptyText, { color: C.textMuted }]}>
-                {loading ? 'Loading devices...' : 'No devices found'}
-              </Text>
-            }
+        {/* Search */}
+        <View style={s.searchRow}>
+          <TextInput
+            style={s.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('common.search') || 'Search devices...'}
+            placeholderTextColor={C.textMuted}
           />
+          <TouchableOpacity onPress={() => setShowAddGroupModal(true)} style={s.refreshBtn}>
+            <Text style={s.refreshBtnText}>+</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={fetchLocations} style={s.refreshBtn}>
+            <Text style={s.refreshBtnText}>⟳</Text>
+          </TouchableOpacity>
         </View>
-      )}
+
+        {error && (
+          <Text style={s.errorText}>{error}</Text>
+        )}
+
+        {/* Selected device detail */}
+        {selectedDevice && (
+          <View style={s.selectedCard}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={s.selectedCardInner}>
+                <Text style={s.selectedName}>{selectedDevice.deviceName}</Text>
+                <Text style={s.selectedMeta}><Feather name="radio" size={12} color={C.textSecondary} /> {selectedDevice.imei}</Text>
+                <Text style={s.selectedMeta}><Feather name="navigation" size={12} color={C.textSecondary} /> {selectedDevice.speed ?? 0} km/h</Text>
+                {selectedDevice.lat && (
+                  <Text style={s.selectedMeta}>
+                    <Feather name="map-pin" size={12} color={C.textSecondary} /> {selectedDevice.lat?.toFixed(5)}, {selectedDevice.lng?.toFixed(5)}
+                  </Text>
+                )}
+                {selectedDevice.batteryPowerVal && (
+                  <Text style={s.selectedMeta}><Feather name="battery" size={12} color={C.textSecondary} /> {selectedDevice.batteryPowerVal}%</Text>
+                )}
+                <Text style={s.selectedMeta}><Feather name="clock" size={12} color={C.textSecondary} /> {formatGimiTime(selectedDevice.sysTime || selectedDevice.gpsTime)}</Text>
+                
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: `${C.accent}20`,
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    marginLeft: 4
+                  }}
+                  onPress={() => handleRingTag(selectedDevice)}
+                  disabled={ringingImei === selectedDevice.imei}
+                >
+                  {ringingImei === selectedDevice.imei ? (
+                    <ActivityIndicator size="small" color={C.accent} style={{ transform: [{ scale: 0.8 }] }} />
+                  ) : (
+                    <Feather name="bell" size={12} color={C.accent} />
+                  )}
+                  <Text style={{ color: C.accent, fontSize: 12, fontWeight: '700' }}>
+                    {t('map.ringTag')}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={s.clearBtn} onPress={() => selectDevice(null)}>
+                  <Text style={s.clearBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Device list with bottom padding container to clear the floating tabs */}
+        <SectionList
+          sections={sections}
+          keyExtractor={(d) => d.imei}
+          renderItem={({ item, section }) => {
+            if (expandedGroups[section.id] === false) return null;
+            return renderDevice({ item });
+          }}
+          renderSectionHeader={renderSectionHeader}
+          style={s.list}
+          contentContainerStyle={{ paddingBottom: 110 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <Text style={[s.emptyText, { color: C.textMuted }]}>
+              {loading ? 'Loading devices...' : 'No devices found'}
+            </Text>
+          }
+        />
+      </Animated.View>
 
       {/* Add Group Modal */}
       <Modal visible={showAddGroupModal} transparent animationType="fade">
@@ -412,90 +428,110 @@ export default function LiveMapScreen() {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const styles = (C: any) => StyleSheet.create({
+const styles = (C: any, theme: string) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bgPrimary },
   map: { flex: 1 },
 
   topBar: {
-    position: 'absolute', top: 12, left: 12, right: 12,
+    position: 'absolute', top: Platform.OS === 'ios' ? 44 : 16, left: 16, right: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    zIndex: 100,
   },
   statsRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: C.bgCard,
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
     borderWidth: 1, borderColor: C.border,
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowColor: '#000', 
+    shadowOpacity: theme === 'dark' ? 0.3 : 0.1, 
+    shadowRadius: 10, 
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  statChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  statChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dotSmall: { width: 8, height: 8, borderRadius: 4 },
-  statText: { fontSize: 12, fontWeight: '600', color: C.textSecondary },
+  statText: { fontSize: 11, fontWeight: '700', color: C.textPrimary },
   themeBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.bgCard, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: C.border,
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowColor: '#000', 
+    shadowOpacity: theme === 'dark' ? 0.3 : 0.1, 
+    shadowRadius: 10, 
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  themeBtnText: { fontSize: 20 },
-
-  panelToggle: {
-    position: 'absolute',
-    left: 0, right: 0,
-    backgroundColor: C.bgSecondary,
-    paddingVertical: 8, alignItems: 'center',
-    borderTopWidth: 1, borderColor: C.border,
-  },
-  panelToggleText: { fontSize: 12, fontWeight: '700', color: C.accent },
+  themeBtnText: { fontSize: 18 },
 
   panel: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: C.bgSecondary,
-    borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    backgroundColor: C.bgCard,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
     borderTopWidth: 1, borderColor: C.border,
-    height: 320,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    height: 340,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: theme === 'dark' ? 0.35 : 0.12,
+    shadowRadius: 16,
+    elevation: 10,
+    zIndex: 90,
   },
+  panelHandle: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    width: '100%',
+  },
+  handleBar: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: C.textMuted,
+    opacity: 0.5,
+    marginBottom: 4,
+  },
+  panelToggleText: { fontSize: 11, fontWeight: '700', color: C.accent, letterSpacing: 0.5 },
+
   searchRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8, gap: 8,
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 10,
   },
   searchInput: {
     flex: 1, backgroundColor: C.bgElevated,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8,
     fontSize: 13, color: C.textPrimary, borderWidth: 1, borderColor: C.border,
   },
   refreshBtn: {
-    width: 36, height: 36, borderRadius: 10,
+    width: 36, height: 36, borderRadius: 12,
     backgroundColor: C.accentDim, alignItems: 'center', justifyContent: 'center',
   },
-  refreshBtnText: { fontSize: 18, color: C.accent },
-  errorText: { fontSize: 12, color: C.danger, paddingHorizontal: 12, marginBottom: 4 },
+  refreshBtnText: { fontSize: 16, color: C.accent, fontWeight: '600' },
+  errorText: { fontSize: 12, color: C.danger, paddingHorizontal: 16, marginBottom: 4 },
   list: { flex: 1 },
 
   deviceItem: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderColor: C.border, gap: 10,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderColor: C.border, gap: 12,
   },
   deviceItemSelected: { backgroundColor: C.accentDim },
   statusDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
   deviceInfo: { flex: 1 },
   deviceName: { fontSize: 13, fontWeight: '700', color: C.textPrimary },
   deviceImei: { fontSize: 10, color: C.textMuted, marginTop: 1 },
-  deviceMeta: { fontSize: 11, color: C.textSecondary, marginTop: 2 },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  deviceMeta: { fontSize: 11, color: C.textSecondary, marginTop: 3 },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  badgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
 
   selectedCard: {
-    marginHorizontal: 12, marginBottom: 6,
-    backgroundColor: C.bgElevated, borderRadius: 12,
+    marginHorizontal: 16, marginBottom: 8,
+    backgroundColor: C.bgElevated, borderRadius: 14,
     borderWidth: 1, borderColor: C.border, overflow: 'hidden',
   },
   selectedCardInner: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 10, gap: 12,
+    paddingHorizontal: 14, paddingVertical: 12, gap: 14,
   },
   selectedName: { fontSize: 13, fontWeight: '800', color: C.textPrimary },
   selectedMeta: { fontSize: 12, color: C.textSecondary },
@@ -509,10 +545,10 @@ const styles = (C: any) => StyleSheet.create({
   // Grouping Styles
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: C.bgCard, paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: C.bgSecondary, paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderColor: C.border,
   },
-  sectionHeaderText: { fontSize: 14, fontWeight: '700', color: C.textPrimary },
+  sectionHeaderText: { fontSize: 13, fontWeight: '700', color: C.textPrimary },
   deleteGroupText: { fontSize: 14, color: C.textMuted, paddingHorizontal: 8 },
   optionsBtn: { padding: 8, marginRight: 4, alignItems: 'center', justifyContent: 'center' },
   optionsBtnText: { fontSize: 18, fontWeight: '600', color: C.textMuted },
@@ -527,16 +563,16 @@ const styles = (C: any) => StyleSheet.create({
     padding: 24, borderWidth: 1, borderColor: C.border,
   },
   optionsModal: { justifyContent: 'flex-end', marginTop: 'auto', marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: C.textPrimary, marginBottom: 16 },
+  modalTitle: { fontSize: 15, fontWeight: '700', color: C.textPrimary, marginBottom: 16 },
   modalInput: {
-    backgroundColor: C.bgElevated, borderRadius: 10, padding: 12,
+    backgroundColor: C.bgElevated, borderRadius: 12, padding: 12,
     fontSize: 14, color: C.textPrimary, borderWidth: 1, borderColor: C.border, marginBottom: 20,
   },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
   modalBtnCancel: { paddingVertical: 10, paddingHorizontal: 16 },
-  modalBtnSubmit: { backgroundColor: C.accent, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 20 },
+  modalBtnSubmit: { backgroundColor: C.accent, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 20 },
   modalBtnTextCancel: { fontSize: 14, fontWeight: '600', color: C.textMuted },
   modalBtnTextSubmit: { fontSize: 14, fontWeight: '700', color: '#fff' },
   optionItem: { paddingVertical: 16, borderBottomWidth: 1, borderColor: C.border },
-  optionText: { fontSize: 15, color: C.textPrimary },
+  optionText: { fontSize: 14, color: C.textPrimary },
 });

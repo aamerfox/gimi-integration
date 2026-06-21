@@ -250,7 +250,7 @@ export default function ShareScreen() {
                     keyExtractor={l => l.id}
                     renderItem={renderLink}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 20 }}
+                    contentContainerStyle={{ paddingBottom: 90 }}
                     ListEmptyComponent={
                         <View style={s.emptyState}>
                             <Feather name="link" size={48} color={C.textMuted} style={{ marginBottom: 12 }} />
