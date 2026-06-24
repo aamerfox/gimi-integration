@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useDeviceStore } from '../store/devices';
+import { useGeofenceEventStore } from '../store/geofenceEvents';
 import { gimiService } from '../services/gimi';
 import { formatGimiTime, getLocalIsoString, formatToUtcApiTime, formatToLocalApiTime } from '../utils/time';
 import {
@@ -532,6 +533,7 @@ export default function Reports() {
 
                                             for (const pt of points) {
                                                 if (!pt) continue;
+                                                if (pt.confidence !== undefined && Number(pt.confidence) < 2) continue;
                                                 const lat = Number(pt.lat ?? pt.latitude ?? 0);
                                                 const lng = Number(pt.lng ?? pt.lon ?? pt.longitude ?? 0);
                                                 if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) continue;
@@ -873,8 +875,44 @@ export default function Reports() {
                         }
                     }
 
-                    if (rawAlarms.length > 0) {
-                        const records = rawAlarms.map((item: any, index: number) => {
+                    // Also query local geofence events for OCI devices
+                    const localEvents = useGeofenceEventStore.getState().events;
+                    const startMs = new Date(startDate).getTime();
+                    const endMs = new Date(endDate).getTime();
+                    const allowedImeis = devices.map(d => d.imei).filter(Boolean);
+                    
+                    const localRecords: AlarmData[] = localEvents
+                        .filter(evt => {
+                            const evtImei = evt.imei || '';
+                            const isTargetDevice = singleImei ? evtImei === singleImei : allowedImeis.includes(evtImei);
+                            if (!isTargetDevice) return false;
+                            
+                            const evtMs = new Date(evt.timestamp).getTime();
+                            return evtMs >= startMs && evtMs <= endMs;
+                        })
+                        .map((evt, idx) => {
+                            const isEntered = evt.eventType === 'entered';
+                            const type = isEntered ? 'Geofence Enter' : 'Geofence Exit';
+                            const desc = isEntered 
+                                ? `Enter geo-fence(${evt.fenceName})` 
+                                : `Exit geo-fence(${evt.fenceName})`;
+                                
+                            const gpsTime = evt.timestamp.replace('T', ' ').split('.')[0];
+                            return {
+                                id: `alarm-local-${idx}`,
+                                deviceName: evt.deviceName || devices.find(d => d.imei === evt.imei)?.deviceName || evt.imei,
+                                time: gpsTime,
+                                type,
+                                speed: 0,
+                                location: desc,
+                                lat: evt.lat,
+                                lng: evt.lng,
+                                imei: evt.imei,
+                            };
+                        });
+
+                    const combinedAlarms = [
+                        ...rawAlarms.map((item: any, index: number) => {
                             const dev = devices.find(d => d.imei === item.imei);
                             const devName = dev ? dev.deviceName : (item.imei || '—');
                             return {
@@ -888,12 +926,12 @@ export default function Reports() {
                                 lng: parseFloat(item.lng || item.longitude || 0),
                                 imei: item.imei || singleImei || '',
                             };
-                        });
-                        setAlarmsResult(records);
-                    } else {
-                        setAlarmsResult([]);
-                    }
+                        }),
+                        ...localRecords
+                    ];
+                    setAlarmsResult(combinedAlarms);
                 }
+
             }
         } catch (err: any) {
             console.error("Report generation failed:", err);

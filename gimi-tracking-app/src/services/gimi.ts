@@ -345,7 +345,8 @@ export const gimiService = {
                         gpsTime: formatGpsTime(pt.timestamp),
                         speed: 0,
                         posType: 'GPS',
-                        direction: 0
+                        direction: 0,
+                        confidence: pt.confidence !== undefined ? Number(pt.confidence) : undefined
                     }));
                     return {
                         code: 0,

@@ -181,6 +181,8 @@ export default function Dashboard() {
                     let prevPoint: { lat: number; lng: number } | null = null;
                     for (const pt of pts) {
                         if (!pt || pt.lat === undefined || pt.lng === undefined) continue;
+                        // Filter out low-confidence points (like LBS fallback jumps with confidence < 2)
+                        if (pt.confidence !== undefined && Number(pt.confidence) < 2) continue;
                         const lat = Number(pt.lat);
                         const lng = Number(pt.lng);
                         if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) continue;
@@ -448,7 +450,7 @@ export default function Dashboard() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('deviceDetails.batteryStrength')}</span>
                                         <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--online)' }}>
-                                            {selectedDevice.batteryPowerVal || selectedDevice.battery || '—'}%
+                                            {selectedDevice.batteryPowerVal === 'N/A' ? 'N/A' : `${selectedDevice.batteryPowerVal || selectedDevice.battery || '—'}%`}
                                         </span>
                                     </div>
                                 </div>
@@ -618,7 +620,7 @@ export default function Dashboard() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('deviceDetails.batteryStrength')}</span>
                                     <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--online)' }}>
-                                        {selectedDevice.batteryPowerVal || selectedDevice.battery || '—'}%
+                                        {selectedDevice.batteryPowerVal === 'N/A' ? 'N/A' : `${selectedDevice.batteryPowerVal || selectedDevice.battery || '—'}%`}
                                     </span>
                                 </div>
                             </div>
