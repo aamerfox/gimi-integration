@@ -10,6 +10,7 @@ export interface ChildAccount {
     roleName: string;
     passwordMd5?: string; // Persisted MD5 of password to allow login bypass
     deviceImei?: string;  // Mapped OCI device IMEI
+    activationTime?: string; // Mapped OCI device activation date(s)
 }
 
 interface SimulationState {
@@ -29,6 +30,7 @@ export const useSimulationStore = create<SimulationState>()(
                     roleName: 'End User (Read-Only)',
                     passwordMd5: '80fc588ba13f3af3d64be60ddfd386d8', // hertz08642
                     deviceImei: '781950640051748',
+                    activationTime: '2026-06-18 12:00:00',
                 }
             ],
             setSimulatedChildAccounts: (accounts) => set({ simulatedChildAccounts: accounts }),

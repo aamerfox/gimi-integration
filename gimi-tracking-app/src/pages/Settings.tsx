@@ -43,6 +43,7 @@ const Settings = () => {
     const [email, setEmail] = useState('');
     const [telephone, setTelephone] = useState('');
     const [deviceImei, setDeviceImei] = useState('');
+    const [activationTime, setActivationTime] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
 
@@ -101,6 +102,7 @@ const Settings = () => {
                 roleName: 'End User (Read-Only)',
                 passwordMd5: '80fc588ba13f3af3d64be60ddfd386d8', // hertz08642
                 deviceImei: '781950640051748',
+                activationTime: '2026-06-18 12:00:00',
             });
         }
     }, [simulatedChildAccounts, addChildAccount]);
@@ -142,6 +144,7 @@ const Settings = () => {
                         roleName: 'End User (Read-Only)',
                         passwordMd5: pwdMd5,
                         deviceImei: deviceImei || undefined,
+                        activationTime: activationTime || undefined,
                     });
                 }
 
@@ -153,6 +156,7 @@ const Settings = () => {
                     roleName: 'End User (Read-Only)',
                     passwordMd5: pwdMd5,
                     deviceImei: deviceImei || undefined,
+                    activationTime: activationTime || undefined,
                 };
                 updateChildAccount(updatedAccount);
                 addLog('Edit Sub-Account', currentUserId, 'Success', `Updated details for: ${editingAccountId}`);
@@ -185,6 +189,7 @@ const Settings = () => {
                         roleName: 'End User (Read-Only)',
                         passwordMd5,
                         deviceImei,
+                        activationTime: activationTime || undefined,
                     });
                 }
                 
@@ -197,6 +202,7 @@ const Settings = () => {
                     roleName: 'End User (Read-Only)',
                     passwordMd5,
                     deviceImei: deviceImei || undefined,
+                    activationTime: activationTime || undefined,
                 };
                 addChildAccount(newAccount);
                 addLog('Create Sub-Account', currentUserId, 'Success', `Created sub-account: ${accountId}`);
@@ -210,6 +216,7 @@ const Settings = () => {
             setEmail('');
             setTelephone('');
             setDeviceImei('');
+            setActivationTime('');
             setShowAddForm(false);
             setEditingAccountId(null);
 
@@ -262,6 +269,7 @@ const Settings = () => {
         setEmail(account.email);
         setTelephone(account.telephone || '');
         setDeviceImei(account.deviceImei || '');
+        setActivationTime(account.activationTime || '');
         setShowAddForm(true);
     };
 
@@ -512,6 +520,20 @@ const Settings = () => {
                                         className="sx-input"
                                     />
                                 </div>
+                            </div>
+
+                            <div style={{ textAlign: 'start' }}>
+                                <label htmlFor="activationTime" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px', display: 'block' }}>
+                                    {language === 'ar' ? 'تاريخ تفعيل أجهزة OCI (اختياري، مفصول بفواصل - YYYY-MM-DD HH:mm:ss)' : 'OCI Device Activation Date(s) (Optional, YYYY-MM-DD HH:mm:ss, comma-separated)'}
+                                </label>
+                                <input 
+                                    id="activationTime"
+                                    type="text" 
+                                    value={activationTime} 
+                                    onChange={(e) => setActivationTime(e.target.value)}
+                                    placeholder={language === 'ar' ? 'مثال: 2026-06-18 12:00:00' : 'e.g. 2026-06-18 12:00:00'}
+                                    className="sx-input"
+                                />
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>

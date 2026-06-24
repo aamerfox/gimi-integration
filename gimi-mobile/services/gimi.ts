@@ -11,6 +11,14 @@ const formatGpsTime = (isoString: string) => {
 
 // Helper to query OCI Tag API for the latest coordinate point
 const queryOciLatestPoint = async (imei: string) => {
+    // Fire a non-blocking background refresh to keep the adapter up-to-date
+    const refreshUrl = 'https://tag.traceplus.co/tag/v1/device/refresh';
+    fetch(refreshUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appKey: TAG_APP_KEY, deviceImei: imei })
+    }).catch(e => console.error('Background refresh failed:', e));
+
     const url = 'https://tag.traceplus.co/tag/v1/device/latest-point';
     const res = await fetch(url, {
         method: 'POST',
@@ -39,6 +47,42 @@ const isOciImei = (imei: string) => {
         if (!acc.deviceImei) return false;
         return acc.deviceImei.split(',').map(s => s.trim()).includes(imei);
     });
+};
+
+const getDeviceActivationTime = (imei: string, allImeisStr?: string, activationTimesStr?: string): string => {
+    const defaultDate = '2026-06-18 12:00:00';
+    if (!activationTimesStr || !allImeisStr) return defaultDate;
+
+    const imeis = allImeisStr.split(',').map(s => s.trim()).filter(Boolean);
+    const times = activationTimesStr.split(',').map(s => s.trim()).filter(Boolean);
+
+    const index = imeis.indexOf(imei);
+    if (index !== -1 && times[index]) {
+        return times[index];
+    }
+    if (times.length === 1 && times[0]) {
+        return times[0];
+    }
+    return defaultDate;
+};
+
+const calculateSimulatedBattery = (activationTimeStr: string): string => {
+    try {
+        const activationDate = new Date(activationTimeStr.replace(' ', 'T'));
+        const currentDate = new Date();
+        const diffMs = currentDate.getTime() - activationDate.getTime();
+        const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        const totalLifespanDays = 3 * 365; // 1095 days
+
+        if (diffDays >= totalLifespanDays) {
+            return '0';
+        }
+        const percentage = 100 - (diffDays * (100 / totalLifespanDays));
+        return Math.max(0, Math.min(100, Math.round(percentage))).toString();
+    } catch (e) {
+        console.error('Failed to calculate battery:', e);
+        return 'N/A';
+    }
 };
 
 export const gimiService = {
@@ -105,19 +149,22 @@ export const gimiService = {
             const mappedImeisString = matched?.deviceImei || '781950640051748';
             const mappedImeis = mappedImeisString.split(',').map(s => s.trim()).filter(Boolean);
 
-            const result = mappedImeis.map((imei, idx) => ({
-                imei,
-                deviceName: matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)',
-                mcType: 'Tag',
-                sim: 'N/A',
-                expiration: '2030-01-01 00:00:00',
-                activationTime: '2026-06-18 12:00:00',
-                reMark: 'OCI Tag Integration',
-                vehicleName: matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : matched.nickName) : 'Hertz Tag',
-                vehicleIcon: 'automobile',
-                enabledFlag: 1,
-                status: 'NORMAL'
-            }));
+            const result = mappedImeis.map((imei, idx) => {
+                const actTime = getDeviceActivationTime(imei, matched?.deviceImei, matched?.activationTime);
+                return {
+                    imei,
+                    deviceName: matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)',
+                    mcType: 'Tag',
+                    sim: 'N/A',
+                    expiration: '2030-01-01 00:00:00',
+                    activationTime: actTime,
+                    reMark: 'OCI Tag Integration',
+                    vehicleName: matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : matched.nickName) : 'Hertz Tag',
+                    vehicleIcon: 'automobile',
+                    enabledFlag: 1,
+                    status: 'NORMAL'
+                };
+            });
 
             return {
                 code: 0,
@@ -145,6 +192,8 @@ export const gimiService = {
             for (let idx = 0; idx < mappedImeis.length; idx++) {
                 const imei = mappedImeis[idx];
                 const devName = matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)';
+                const actTime = getDeviceActivationTime(imei, matched?.deviceImei, matched?.activationTime);
+                const batVal = calculateSimulatedBattery(actTime);
                 try {
                     const ociRes = await queryOciLatestPoint(imei);
                     if (ociRes && ociRes.code === 0 && ociRes.data) {
@@ -160,7 +209,8 @@ export const gimiService = {
                             lng: d.lng,
                             speed: 0,
                             gpsTime: formatGpsTime(d.timestamp),
-                            accStatus: '1'
+                            accStatus: '1',
+                            batteryPowerVal: batVal
                         });
                         continue;
                     }
@@ -180,7 +230,8 @@ export const gimiService = {
                     lng: 46.71977 + (idx * 0.005),
                     speed: 0,
                     gpsTime: '2026-06-18 12:00:00',
-                    accStatus: '1'
+                    accStatus: '1',
+                    batteryPowerVal: batVal
                 });
             }
 
@@ -214,6 +265,8 @@ export const gimiService = {
             }
             if (!targetImei) targetImei = '781950640051748';
 
+            const actTime = getDeviceActivationTime(targetImei, matched?.deviceImei, matched?.activationTime);
+            const batVal = calculateSimulatedBattery(actTime);
             try {
                 const ociRes = await queryOciLatestPoint(targetImei);
                 if (ociRes && ociRes.code === 0 && ociRes.data) {
@@ -232,7 +285,8 @@ export const gimiService = {
                             lng: d.lng,
                             speed: 0,
                             gpsTime: formatGpsTime(d.timestamp),
-                            accStatus: '1'
+                            accStatus: '1',
+                            batteryPowerVal: batVal
                         }
                     };
                 }
@@ -253,7 +307,8 @@ export const gimiService = {
                     lng: 46.71977,
                     speed: 0,
                     gpsTime: '2026-06-18 12:00:00',
-                    accStatus: '1'
+                    accStatus: '1',
+                    batteryPowerVal: batVal
                 }
             };
         }
@@ -479,7 +534,11 @@ export const gimiService = {
             method: 'jimi.open.instruction.send',
             access_token: accessToken,
             imei,
-            cmd_val: command,
+            inst_param_json: JSON.stringify({
+                inst_id: '0',
+                inst_template: command,
+                params: []
+            })
         });
     },
 };
