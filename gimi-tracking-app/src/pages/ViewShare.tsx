@@ -305,6 +305,12 @@ export default function ViewShare() {
                                 Speed: ${speed} km/h<br/>
                                 <span style="font-size:9px">Updated: ${new Date().toLocaleTimeString()}</span>
                             </div>
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" style="display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:6px 10px; background:#0284c7; color:#ffffff; text-decoration:none; border-radius:4px; font-size:11px; font-weight:600; cursor:pointer;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                                </svg>
+                                ${t('deviceDetails.googleMaps') || 'Google Maps'}
+                            </a>
                         </div>
                     `);
                     mapRef.current?.flyTo(newPos, 15, { duration: 1 });
@@ -328,6 +334,11 @@ export default function ViewShare() {
             mapRef.current = null;
         };
     }, [searchParams, t]);
+
+    const handleWhatsAppShare = () => {
+        const text = encodeURIComponent(`${t('share.title') || 'Live Location'}: ${deviceName || 'Device'} - ${window.location.href}`);
+        window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+    };
 
     const handleRingTag = async () => {
         if (!shareParams) return;
@@ -402,23 +413,50 @@ export default function ViewShare() {
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{deviceName || t('common.loading')}</div>
                 </div>
 
-                {loading ? (
-                    <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontSize: '12px', fontWeight: 600 }}>
-                        <div className="animate-pulse">{t('common.connecting') || 'Connecting...'}</div>
-                    </div>
-                ) : (
+                <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {loading && (
+                        <div style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', marginInlineEnd: '8px' }}>
+                            <div className="animate-pulse">{t('common.connecting') || 'Connecting...'}</div>
+                        </div>
+                    )}
+                    
+                    {!loading && (
+                        <button
+                            onClick={handleRingTag}
+                            disabled={ringing}
+                            className="sx-btn sx-btn-ghost sx-btn-sm"
+                            style={{
+                                justifyContent: 'center',
+                                fontSize: '11px',
+                                padding: '6px 10px',
+                                color: 'var(--accent)',
+                                borderColor: 'var(--border-accent)',
+                                background: 'var(--accent-dim)',
+                                borderRadius: 'var(--radius-md)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={ringing ? 'animate-bounce' : ''}>
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                            </svg>
+                            {ringing ? t('common.loading') : t('deviceDetails.ringTag')}
+                        </button>
+                    )}
+
                     <button
-                        onClick={handleRingTag}
-                        disabled={ringing}
+                        onClick={handleWhatsAppShare}
                         className="sx-btn sx-btn-ghost sx-btn-sm"
                         style={{
-                            marginInlineStart: 'auto',
                             justifyContent: 'center',
                             fontSize: '11px',
                             padding: '6px 10px',
-                            color: 'var(--accent)',
-                            borderColor: 'var(--border-accent)',
-                            background: 'var(--accent-dim)',
+                            color: '#25D366',
+                            borderColor: 'rgba(37, 211, 102, 0.3)',
+                            background: 'rgba(37, 211, 102, 0.1)',
                             borderRadius: 'var(--radius-md)',
                             display: 'flex',
                             alignItems: 'center',
@@ -426,13 +464,12 @@ export default function ViewShare() {
                             cursor: 'pointer',
                         }}
                     >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={ringing ? 'animate-bounce' : ''}>
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.451L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.59 2.019 14.113.992 11.487.99 6.05 10.011.99.167 11.488c-.001 1.716.446 3.393 1.3 4.888l-1.082 3.956 4.093-1.072z"/>
                         </svg>
-                        {ringing ? t('common.loading') : t('deviceDetails.ringTag')}
+                        {t('share.whatsAppShare') || 'WhatsApp'}
                     </button>
-                )}
+                </div>
             </div>
 
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />

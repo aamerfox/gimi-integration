@@ -96,7 +96,8 @@
         "expires": "ينتهي في",
         "expired": "منتهي الصلاحية",
         "invalidLink": "هذا الرابط غير صالح أو منتهي الصلاحية.",
-        "linkInactive": "رابط غير نشط"
+        "linkInactive": "رابط غير نشط",
+        "whatsAppShare": "مشاركة واتساب"
     },
     "deviceDetails": {
         "address": "العنوان",
@@ -112,7 +113,8 @@
         "share": "مشاركة",
         "speed": "السرعة",
         "ringTag": "رنين الجهاز",
-        "ringSuccess": "تم إرسال أمر الرنين إلى {{name}}"
+        "ringSuccess": "تم إرسال أمر الرنين إلى {{name}}",
+        "googleMaps": "خرائط Google"
     },
     "reports": {
         "title": "التقارير والتحليلات",

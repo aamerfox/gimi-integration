@@ -96,7 +96,8 @@
         "expires": "Expires",
         "expired": "Expired",
         "invalidLink": "This link is invalid or has expired.",
-        "linkInactive": "Link Inactive"
+        "linkInactive": "Link Inactive",
+        "whatsAppShare": "WhatsApp Share"
     },
     "deviceDetails": {
         "address": "Address",
@@ -112,7 +113,8 @@
         "share": "Share",
         "speed": "Speed",
         "ringTag": "Ring Tag",
-        "ringSuccess": "Sent ring command to {{name}}"
+        "ringSuccess": "Sent ring command to {{name}}",
+        "googleMaps": "Google Maps"
     },
     "reports": {
         "title": "Reports & Analytics",
