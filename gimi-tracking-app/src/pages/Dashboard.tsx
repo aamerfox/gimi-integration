@@ -424,9 +424,28 @@ export default function Dashboard() {
                                     {addressLoading ? t('common.loading') : (resolvedAddress || selectedDevice.locDesc || t('deviceDetails.noAddress'))}
                                 </div>
                                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{t('deviceDetails.coordinates')}</div>
-                                <div style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                                <a
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${selectedDevice.lat},${selectedDevice.lng}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        fontSize: '12px',
+                                        fontFamily: 'monospace',
+                                        color: 'var(--accent)',
+                                        textDecoration: 'none',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        cursor: 'pointer',
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                >
                                     {selectedDevice.lat.toFixed(6)}, {selectedDevice.lng.toFixed(6)}
-                                </div>
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}>
+                                        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                                    </svg>
+                                </a>
                             </div>
 
                             {/* Device GNSS and Last fix */}
@@ -601,7 +620,11 @@ export default function Dashboard() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
                             <InfoTile label={t('deviceDetails.gnss')} value={selectedDevice.posType || 'GPS'} />
                             <InfoTile label={t('deviceDetails.lastFix')} value={selectedDevice.gpsTime ? formatGimiTimeOnly(selectedDevice.gpsTime) : '—'} />
-                            <InfoTile label={t('deviceDetails.coordinates')} value={`${selectedDevice.lat.toFixed(5)}, ${selectedDevice.lng.toFixed(5)}`} />
+                            <InfoTile 
+                                label={t('deviceDetails.coordinates')} 
+                                value={`${selectedDevice.lat.toFixed(5)}, ${selectedDevice.lng.toFixed(5)}`} 
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${selectedDevice.lat},${selectedDevice.lng}`}
+                            />
                             <InfoTile label={t('deviceDetails.speed')} value={`${selectedDevice.speed || 0} km/h`} />
                         </div>
 
@@ -703,7 +726,9 @@ export default function Dashboard() {
     );
 }
 
-function InfoTile({ label, value }: { label: string; value: string }) {
+function InfoTile({ label, value, href }: { label: string; value: string; href?: string }) {
+    const content = <div style={{ fontSize: '13px', fontWeight: 600, color: href ? 'var(--accent)' : 'inherit' }}>{value}</div>;
+    
     return (
         <div style={{
             padding: '10px',
@@ -712,7 +737,22 @@ function InfoTile({ label, value }: { label: string; value: string }) {
             border: '1px solid var(--border)',
         }}>
             <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{label}</div>
-            <div style={{ fontSize: '13px', fontWeight: 600 }}>{value}</div>
+            {href ? (
+                <a 
+                    href={href} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    style={{ 
+                        textDecoration: 'none', 
+                        color: 'inherit',
+                        cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                >
+                    {content}
+                </a>
+            ) : content}
         </div>
     );
 }
