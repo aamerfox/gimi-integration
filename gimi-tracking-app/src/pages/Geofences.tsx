@@ -31,10 +31,15 @@ export default function Geofences() {
     } = useGeofenceStore();
 
     // Combine local geofences and API geofences
-    const combinedGeofences = useMemo(() => [
-        ...apiGeofences,
-        ...localGeofences.map(g => ({ ...g, isLocal: true }))
-    ], [apiGeofences, localGeofences]);
+    const combinedGeofences = useMemo(() => {
+        const allowedImeis = devices.map(d => d.imei).filter(Boolean);
+        const filteredLocal = localGeofences.filter(g => !g.imei || allowedImeis.includes(g.imei));
+        return [
+            ...apiGeofences,
+            ...filteredLocal.map(g => ({ ...g, isLocal: true }))
+        ];
+    }, [apiGeofences, localGeofences, devices]);
+
 
     // ── Form state ────────────────────────────────────────────────────────────
     const [showForm, setShowForm] = useState(false);
@@ -89,8 +94,11 @@ export default function Geofences() {
             center: [24.7136, 46.6753],
             zoom: 6,
             zoomControl: false,
+            attributionControl: false,
             layers: [streetLayer]
         });
+
+        L.control.attribution({ prefix: false }).addTo(map);
 
         const isRtl = document.documentElement.dir === 'rtl';
         L.control.layers(baseMaps, undefined, { position: isRtl ? 'bottomleft' : 'bottomright' }).addTo(map);

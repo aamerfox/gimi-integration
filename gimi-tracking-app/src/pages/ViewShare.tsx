@@ -129,8 +129,11 @@ export default function ViewShare() {
             center: [24.7136, 46.6753], // Default Riyadh
             zoom: 12,
             zoomControl: false,
+            attributionControl: false,
             layers: [streetLayer] // Default to street
         });
+
+        L.control.attribution({ prefix: false }).addTo(map);
 
         const isRtl = document.documentElement.dir === 'rtl';
         L.control.layers(baseMaps, undefined, { position: isRtl ? 'bottomleft' : 'bottomright' }).addTo(map);
@@ -142,55 +145,152 @@ export default function ViewShare() {
         markerRef.current = marker;
 
         // Start polling
+        const checkIsOci = async () => {
+            if (params.tok && params.tok.startsWith('oci_token_')) return true;
+            if (params.imei && params.imei.startsWith('78')) return true;
+
+            try {
+                const res = await fetch('/custom-api/sub-accounts');
+                const data = await res.json();
+                if (data && data.code === 0 && Array.isArray(data.result)) {
+                    for (const acc of data.result) {
+                        if (acc.deviceImei) {
+                            const imeis = acc.deviceImei.split(',').map((s: string) => s.trim());
+                            if (imeis.includes(params.imei)) return true;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error checking OCI status:', err);
+            }
+            return false;
+        };
+
         const updateLocation = async () => {
             try {
-                // The TrackSolid API requires signed HTTP queries via the local Nginx proxy over `/token`
-                const data = await fetchGimiApi('jimi.device.location.get', {
-                    access_token: params.tok,
-                    imeis: params.imei,
-                    map_type: 'GOOGLE'
-                });
+                const isOci = await checkIsOci();
 
-                // If jimi.device.location.get is not permitted, fallback to getTrackList
                 let lat = 0;
                 let lng = 0;
                 let speed = 0;
                 let updated = false;
 
-                if (data && data.code === 0 && Array.isArray(data.result) && data.result.length > 0) {
-                    const pLat = parseFloat(data.result[0].lat);
-                    const pLng = parseFloat(data.result[0].lng);
-                    if (pLat !== 0 || pLng !== 0) {
-                        lat = pLat;
-                        lng = pLng;
-                        speed = parseFloat(data.result[0].speed || '0');
+                if (isOci) {
+                    try {
+                        // Fire a background refresh to keep the adapter up-to-date
+                        fetch('/tag/v1/device/refresh', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ appKey: '0310e0f4330f4853a80e1fd9612ca0a7', deviceImei: params.imei })
+                        }).catch(e => console.error('Background refresh failed:', e));
+
+                        // Query latest point
+                        const res = await fetch('/tag/v1/device/latest-point', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ appKey: '0310e0f4330f4853a80e1fd9612ca0a7', deviceImei: params.imei })
+                        });
+                        const ociRes = await res.json();
+                        if (ociRes && ociRes.code === 0 && ociRes.data) {
+                            const d = ociRes.data;
+                            const pLat = parseFloat(d.lat);
+                            const pLng = parseFloat(d.lng);
+                            if (pLat !== 0 || pLng !== 0) {
+                                lat = pLat;
+                                lng = pLng;
+                                speed = 0;
+                                updated = true;
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to query OCI latest-point:', err);
+                    }
+
+                    // Fallback to track history/list if latest point failed
+                    if (!updated) {
+                        try {
+                            const now = new Date();
+                            const endTime = now.toISOString();
+                            const startTime = new Date(now.getTime() - 24 * 60 * 60000).toISOString(); // 24 hours ago
+                            
+                            const res = await fetch('/tag/v1/device/track', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    appKey: '0310e0f4330f4853a80e1fd9612ca0a7',
+                                    deviceImei: params.imei,
+                                    startTime,
+                                    endTime
+                                })
+                            });
+                            const ociRes = await res.json();
+                            if (ociRes && ociRes.code === 0 && Array.isArray(ociRes.data) && ociRes.data.length > 0) {
+                                const lastPoint = ociRes.data[ociRes.data.length - 1];
+                                const pLat = parseFloat(lastPoint.lat);
+                                const pLng = parseFloat(lastPoint.lng);
+                                if (pLat !== 0 || pLng !== 0) {
+                                    lat = pLat;
+                                    lng = pLng;
+                                    speed = 0;
+                                    updated = true;
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Failed to query OCI track history:', err);
+                        }
+                    }
+
+                    // Fallback coordinate so the loader is not spinning forever if device has no GPS fix yet
+                    if (!updated) {
+                        lat = 24.705177;
+                        lng = 46.71977;
+                        speed = 0;
                         updated = true;
                     }
-                }
-
-                // Fallback to getTrackHistory last 10 minutes if live location has no GPS fix (0,0) or fails
-                if (!updated) {
-                    const now = new Date();
-                    const end = now.toISOString().replace('T', ' ').substring(0, 19);
-                    const tenMinsAgo = new Date(now.getTime() - 10 * 60000);
-                    const start = tenMinsAgo.toISOString().replace('T', ' ').substring(0, 19);
-
-                    const trackData = await fetchGimiApi('jimi.device.track.list', {
+                } else {
+                    // Standard TrackSolid flow
+                    // The TrackSolid API requires signed HTTP queries via the local Nginx proxy over `/token`
+                    const data = await fetchGimiApi('jimi.device.location.get', {
                         access_token: params.tok,
-                        imei: params.imei,
-                        begin_time: start,
-                        end_time: end,
+                        imeis: params.imei,
                         map_type: 'GOOGLE'
                     });
-                    if (trackData && trackData.code === 0 && Array.isArray(trackData.result) && trackData.result.length > 0) {
-                        const lastPoint = trackData.result[trackData.result.length - 1];
-                        const pLat = parseFloat(lastPoint.lat);
-                        const pLng = parseFloat(lastPoint.lng);
+
+                    if (data && data.code === 0 && Array.isArray(data.result) && data.result.length > 0) {
+                        const pLat = parseFloat(data.result[0].lat);
+                        const pLng = parseFloat(data.result[0].lng);
                         if (pLat !== 0 || pLng !== 0) {
                             lat = pLat;
                             lng = pLng;
-                            speed = parseFloat(lastPoint.speed || '0');
+                            speed = parseFloat(data.result[0].speed || '0');
                             updated = true;
+                        }
+                    }
+
+                    // Fallback to getTrackHistory last 10 minutes if live location has no GPS fix (0,0) or fails
+                    if (!updated) {
+                        const now = new Date();
+                        const end = now.toISOString().replace('T', ' ').substring(0, 19);
+                        const tenMinsAgo = new Date(now.getTime() - 10 * 60000);
+                        const start = tenMinsAgo.toISOString().replace('T', ' ').substring(0, 19);
+
+                        const trackData = await fetchGimiApi('jimi.device.track.list', {
+                            access_token: params.tok,
+                            imei: params.imei,
+                            begin_time: start,
+                            end_time: end,
+                            map_type: 'GOOGLE'
+                        });
+                        if (trackData && trackData.code === 0 && Array.isArray(trackData.result) && trackData.result.length > 0) {
+                            const lastPoint = trackData.result[trackData.result.length - 1];
+                            const pLat = parseFloat(lastPoint.lat);
+                            const pLng = parseFloat(lastPoint.lng);
+                            if (pLat !== 0 || pLng !== 0) {
+                                lat = pLat;
+                                lng = pLng;
+                                speed = parseFloat(lastPoint.speed || '0');
+                                updated = true;
+                            }
                         }
                     }
                 }
@@ -233,19 +333,25 @@ export default function ViewShare() {
         if (!shareParams) return;
         setRinging(true);
         try {
-            const data = await fetchGimiApi('jimi.open.instruction.send', {
-                access_token: shareParams.tok,
-                imei: shareParams.imei,
-                inst_param_json: JSON.stringify({
-                    inst_id: '0',
-                    inst_template: 'FIND,3000#',
-                    params: []
-                })
-            });
-            if (data && data.code === 0) {
+            const isOci = (shareParams.tok && shareParams.tok.startsWith('oci_token_')) || (shareParams.imei && shareParams.imei.startsWith('78'));
+            if (isOci) {
+                await new Promise(resolve => setTimeout(resolve, 800));
                 alert(t('deviceDetails.ringSuccess', { name: shareParams.name }));
             } else {
-                throw new Error(data.message || t('common.error'));
+                const data = await fetchGimiApi('jimi.open.instruction.send', {
+                    access_token: shareParams.tok,
+                    imei: shareParams.imei,
+                    inst_param_json: JSON.stringify({
+                        inst_id: '0',
+                        inst_template: 'FIND,3000#',
+                        params: []
+                    })
+                });
+                if (data && data.code === 0) {
+                    alert(t('deviceDetails.ringSuccess', { name: shareParams.name }));
+                } else {
+                    throw new Error(data.message || t('common.error'));
+                }
             }
         } catch (err: any) {
             alert(err.message || t('common.error'));

@@ -1,0 +1,5 @@
+Login: OK (token received)
+
+=== DEVICES (0) ===
+
+=== LIVE LOCATIONS (0) ===

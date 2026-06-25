@@ -8,7 +8,7 @@ async function mockAuthAndApi(page: Page) {
                 accessToken: 'fake-access-token',
                 refreshToken: 'fake-refresh-token',
                 expiresIn: 9999999999,
-                userId: 'admin_saudiex',
+                userId: 'saudiextest',
                 appKey: 'FAKE_KEY',
                 isAuthenticated: true,
             },
@@ -119,6 +119,14 @@ async function mockAuthAndApi(page: Page) {
                 status: 200,
                 contentType: 'application/json',
                 body: JSON.stringify({ code: 0, message: 'success', result: {} })
+            });
+            return;
+        }
+        if (url.includes('jimi.user.child.list')) {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ code: 0, message: 'success', result: [] })
             });
             return;
         }

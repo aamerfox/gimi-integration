@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth';
 import { useThemeStore } from '../store/theme';
 import { useTranslation } from 'react-i18next';
 import { useGeofenceEventStore } from '../store/geofenceEvents';
+import { useDeviceStore } from '../store/devices';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 const navItems = [
@@ -81,8 +82,10 @@ export default function Sidebar() {
     const { userId, logout } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
     const { t } = useTranslation();
+    const { devices } = useDeviceStore();
     const { events } = useGeofenceEventStore();
-    const unreadCount = events.filter(e => !e.read).length;
+    const allowedImeis = devices.map(d => d.imei).filter(Boolean);
+    const unreadCount = events.filter(e => !e.read && allowedImeis.includes(e.imei)).length;
     const isLight = theme === 'light';
     const isMobile = useIsMobile();
 

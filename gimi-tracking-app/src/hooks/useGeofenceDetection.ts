@@ -47,10 +47,15 @@ function sendNotification(title: string, body: string) {
 export function useGeofenceDetection() {
     const { devices } = useDeviceStore();
     const { geofences: localGeofences, apiGeofences } = useGeofenceStore();
-    const geofences = useMemo(() => [
-        ...apiGeofences,
-        ...localGeofences.map(g => ({ ...g, isLocal: true }))
-    ], [apiGeofences, localGeofences]);
+    const geofences = useMemo(() => {
+        const allowedImeis = devices.map(d => d.imei).filter(Boolean);
+        const filteredLocal = localGeofences.filter(g => !g.imei || allowedImeis.includes(g.imei));
+        return [
+            ...apiGeofences,
+            ...filteredLocal.map(g => ({ ...g, isLocal: true }))
+        ];
+    }, [apiGeofences, localGeofences, devices]);
+
     const { addEvent } = useGeofenceEventStore();
 
     // Map<imei, Set<fenceId>> — tracks which fences each device is currently inside

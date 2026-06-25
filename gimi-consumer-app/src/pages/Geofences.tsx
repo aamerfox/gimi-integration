@@ -121,6 +121,7 @@ export default function Geofences() {
                   style={{ height: 220, width: '100%' }}
                   zoomControl={false}
                   scrollWheelZoom={false}
+                  attributionControl={false}
                 >
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   <Marker position={[selected.lat, selected.lng]} icon={L.divIcon({ html: '<div style="width:12px;height:12px;background:red;border-radius:50%;border:2px solid white"></div>', className: '', iconSize: [12, 12], iconAnchor: [6, 6] })} />

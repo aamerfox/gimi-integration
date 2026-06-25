@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet, Text } from 'react-native';
+import { Platform, StyleSheet, Text, I18nManager, Alert, DevSettings } from 'react-native';
 import { useAuthStore } from '@/store/auth';
 import { useDeviceStore } from '@/store/devices';
 import { useThemeStore } from '@/store/theme';
 import { useLanguageStore } from '@/store/language';
 import COLORS from '@/constants/Colors';
-import '@/localization/i18n';
+import i18n from '@/localization/i18n';
 
 // ── Google Fonts ──
 import { 
@@ -28,38 +28,54 @@ import {
 } from '@expo-google-fonts/barlow';
 
 // Global Font Injection for Arabic (Cairo for Bold headings, Tajawal for Body) and English/Numbers (Barlow)
-const oldRender = (Text as any).render;
-(Text as any).render = function (...args: any[]) {
-  const origin = oldRender.call(this, ...args);
-  const lang = useLanguageStore.getState().language;
+// Global Font Injection for Arabic (Cairo for Bold headings, Tajawal for Body) and English/Numbers (Barlow)
+try {
+  const TextComponent = Text as any;
+  const oldRender = TextComponent.render;
+  if (typeof oldRender === 'function') {
+    TextComponent.render = function (...args: any[]) {
+      try {
+        const origin = oldRender.call(this, ...args);
+        if (!origin || !React.isValidElement(origin) || !origin.props) {
+          return origin;
+        }
 
-  let weight = 'regular';
-  const style = origin.props.style;
-  if (style) {
-    const flatStyle = StyleSheet.flatten(style);
-    if (flatStyle && flatStyle.fontWeight) {
-      const fw = String(flatStyle.fontWeight);
-      if (fw === 'bold' || fw === '700' || fw === '800' || fw === '900') {
-        weight = 'bold';
-      } else if (fw === '500' || fw === '600' || fw === 'medium') {
-        weight = 'medium';
+        const lang = useLanguageStore.getState().language;
+        let weight = 'regular';
+        const style = (origin.props as any).style;
+        if (style) {
+          const flatStyle = StyleSheet.flatten(style);
+          if (flatStyle && flatStyle.fontWeight) {
+            const fw = String(flatStyle.fontWeight);
+            if (fw === 'bold' || fw === '700' || fw === '800' || fw === '900') {
+              weight = 'bold';
+            } else if (fw === '500' || fw === '600' || fw === 'medium') {
+              weight = 'medium';
+            }
+          }
+        }
+
+        const fontFamily = lang === 'ar'
+          ? (weight === 'bold' ? 'Cairo_700Bold' : (weight === 'medium' ? 'Tajawal_500Medium' : 'Tajawal_400Regular'))
+          : (weight === 'bold' ? 'Barlow_700Bold' : (weight === 'medium' ? 'Barlow_500Medium' : 'Barlow_400Regular'));
+
+        return React.cloneElement(origin, {
+          style: [
+            { fontFamily },
+            style,
+            // Avoid double-bolding/layout issues on Android when custom fonts are used
+            Platform.OS === 'android' ? { fontWeight: 'normal' } : null,
+          ],
+        } as any);
+      } catch (err) {
+        console.warn('Text render monkey patch error:', err);
+        return oldRender.apply(this, args);
       }
-    }
+    };
   }
-
-  const fontFamily = lang === 'ar'
-    ? (weight === 'bold' ? 'Cairo_700Bold' : (weight === 'medium' ? 'Tajawal_500Medium' : 'Tajawal_400Regular'))
-    : (weight === 'bold' ? 'Barlow_700Bold' : (weight === 'medium' ? 'Barlow_500Medium' : 'Barlow_400Regular'));
-
-  return React.cloneElement(origin, {
-    style: [
-      { fontFamily },
-      style,
-      // Avoid double-bolding/layout issues on Android when custom fonts are used
-      Platform.OS === 'android' ? { fontWeight: 'normal' } : null,
-    ],
-  });
-};
+} catch (err) {
+  console.warn('Failed to monkeypatch Text component:', err);
+}
 
 
 // ── Push Notifications ──
@@ -128,9 +144,10 @@ function NotificationBootstrap() {
 
   // Cache device list whenever it changes (for background poller access)
   useEffect(() => {
-    if (devices.length > 0 && accessToken) {
+    const safeDevices = Array.isArray(devices) ? devices : [];
+    if (safeDevices.length > 0 && accessToken) {
       cacheDevicesForPoller(
-        devices.map(d => ({ imei: d.imei, deviceName: d.deviceName }))
+        safeDevices.map(d => ({ imei: d.imei, deviceName: d.deviceName }))
       );
     }
   }, [devices, accessToken]);
@@ -159,6 +176,41 @@ export default function RootLayout() {
     const unsub = useLanguageStore.persist.onFinishHydration(() => setHydrated(true));
     return unsub;
   }, []);
+
+  // Sync i18n and RTL layout direction once store hydration finishes
+  useEffect(() => {
+    if (hydrated) {
+      const lang = useLanguageStore.getState().language;
+      if (i18n.language !== lang) {
+        i18n.changeLanguage(lang);
+      }
+
+      if (Platform.OS !== 'web') {
+        const isRTL = lang === 'ar';
+        const currentRTL = I18nManager.isRTL;
+        if (currentRTL !== isRTL) {
+          I18nManager.allowRTL(isRTL);
+          I18nManager.forceRTL(isRTL);
+
+          if (__DEV__) {
+            DevSettings.reload();
+          } else {
+            Alert.alert(
+              lang === 'ar' ? 'مزامنة اللغة والاتجاه' : 'Language Sync',
+              lang === 'ar'
+                ? 'تم تغيير اتجاه اللغة. يرجى إعادة تشغيل التطبيق بالكامل لتفعيل اتجاه اللغة العربية (RTL) بشكل صحيح.'
+                : 'Language direction changed. Please restart the app completely to apply English layout direction (LTR) correctly.',
+              [{ text: lang === 'ar' ? 'حسناً' : 'OK' }]
+            );
+          }
+        }
+      } else {
+        const isRTL = lang === 'ar';
+        document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+        document.documentElement.lang = lang;
+      }
+    }
+  }, [hydrated]);
 
   if (!hydrated || !fontsLoaded) return null; // or a splash screen
 

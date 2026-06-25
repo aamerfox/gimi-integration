@@ -9,9 +9,12 @@ import { useAuthStore } from '@/store/auth';
 import { useDeviceStore, Device } from '@/store/devices';
 import { useThemeStore } from '@/store/theme';
 import { useGeofenceStore, LocalGeofence } from '@/store/geofences';
+import { useIsFocused } from '@react-navigation/native';
+import { useLanguageStore } from '@/store/language';
 import { gimiService } from '@/services/gimi';
 import COLORS from '@/constants/Colors';
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 interface ApiGeofence {
     fenceId: string;
@@ -36,20 +39,26 @@ type ViewMode = 'list' | 'create';
 
 function buildGeofenceMapHtml(
     geofences: ApiGeofence[],
-    theme: 'dark' | 'light'
+    theme: 'dark' | 'light',
+    direction: 'ltr' | 'rtl'
 ): string {
     const bg = theme === 'dark' ? '#0a0e1a' : '#f0f4f8';
     const accent = theme === 'dark' ? '#0891b2' : '#1e3a8a';
     const fencesJson = JSON.stringify(geofences.filter(f => f.lat && f.lng));
+    const isRtl = direction === 'rtl';
+    const labelRadius = isRtl ? 'نصف القطر:' : 'Radius:';
+    const labelImei = isRtl ? 'رقم IMEI:' : 'IMEI:';
+    const labelAll = isRtl ? 'الكل' : 'all';
+
     return `<!DOCTYPE html>
-<html>
+<html dir="${direction}">
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 html,body,#map{margin:0;padding:0;height:100%;width:100%;background:${bg};}
-.leaflet-popup-content-wrapper{background:${theme === 'dark' ? '#1a2035' : '#fff'};color:${theme === 'dark' ? '#f1f5f9' : '#0f172a'};border-radius:12px;}
+.leaflet-popup-content-wrapper{background:${theme === 'dark' ? '#1a2035' : '#fff'};color:${theme === 'dark' ? '#f1f5f9' : '#0f172a'};border-radius:12px; text-align: ${isRtl ? 'right' : 'left'};}
 .leaflet-popup-tip{background:${theme === 'dark' ? '#1a2035' : '#fff'};}
 .leaflet-control-zoom a{background:${theme === 'dark' ? '#111827' : '#fff'} !important;color:${theme === 'dark' ? '#94a3b8' : '#475569'} !important;}
 </style>
@@ -59,15 +68,15 @@ html,body,#map{margin:0;padding:0;height:100%;width:100%;background:${bg};}
 <script>
 var fences=${fencesJson};
 var accent='${accent}';
-var map=L.map('map',{center:[24.7136,46.6753],zoom:6,zoomControl:true});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18}).addTo(map);
+var map=L.map('map',{center:[24.7136,46.6753],zoom:6,zoomControl:true,attributionControl:false});
+L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{attribution:'© Google Maps',maxZoom:18}).addTo(map);
 
 fences.forEach(function(f){
   if(!f.lat||!f.lng) return;
   var r=f.radius||500;
   L.circle([f.lat,f.lng],{
     radius:r, color:accent, fillColor:accent, fillOpacity:0.12, weight:2
-  }).addTo(map).bindPopup('<b>'+f.fenceName+'</b><br/>Radius: '+r+'m<br/>IMEI: '+(f.imei||'(all)'));
+  }).addTo(map).bindPopup('<b>'+f.fenceName+'</b><br/>' + labelRadius + ' ' + r + 'm<br/>' + labelImei + ' ' + (f.imei || '(' + labelAll + ')'));
   L.circleMarker([f.lat,f.lng],{
     radius:5,fillColor:accent,fillOpacity:1,color:'#fff',weight:2
   }).addTo(map);
@@ -94,9 +103,12 @@ map.on('click',function(e){
 }
 
 export default function GeofencesScreen() {
+    const isFocused = useIsFocused();
     const { accessToken, userId } = useAuthStore();
     const { devices } = useDeviceStore();
     const { theme } = useThemeStore();
+    const { direction } = useLanguageStore();
+    const { t } = useTranslation();
     const { 
         geofences: localFences, 
         apiGeofences, 
@@ -106,18 +118,20 @@ export default function GeofencesScreen() {
         addGeofence, 
         removeGeofence 
     } = useGeofenceStore();
-    const C = COLORS[theme];
+    
+    const safeDevices = Array.isArray(devices) ? devices : [];
+    const C = COLORS[theme || 'dark'] || COLORS.dark;
 
     // Fetch API geofences on mount or when devices load
     const fetchedRef = useRef(false);
     useEffect(() => {
-        if (!fetchedRef.current || (devices.length > 0 && !fetchedRef.current)) {
+        if (!fetchedRef.current || (safeDevices.length > 0 && !fetchedRef.current)) {
             fetchGeofences();
-            if (devices.length > 0) {
+            if (safeDevices.length > 0) {
                 fetchedRef.current = true;
             }
         }
-    }, [fetchGeofences, devices.length]);
+    }, [fetchGeofences, safeDevices.length]);
 
     const [creating, setCreating] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -131,9 +145,13 @@ export default function GeofencesScreen() {
     const [newLng, setNewLng] = useState<number | null>(null);
 
     // Combined list
-    const safeLocalFences = Array.isArray(localFences) ? localFences : [];
+    const allowedImeis = safeDevices.map(d => d.imei).filter(Boolean);
+    const safeLocalFences = (Array.isArray(localFences) ? localFences : [])
+        .filter(g => !g.imei || allowedImeis.includes(g.imei));
+    const safeApiGeofences = Array.isArray(apiGeofences) ? apiGeofences : [];
     const allGeofences: ApiGeofence[] = [
-        ...apiGeofences.map((g: LocalGeofence) => ({
+
+        ...safeApiGeofences.map((g: LocalGeofence) => ({
             fenceId: g.id, 
             fenceName: g.fenceName,
             lat: g.lat, 
@@ -153,7 +171,7 @@ export default function GeofencesScreen() {
         })),
     ];
 
-    const mapHtml = buildGeofenceMapHtml(allGeofences, theme);
+    const mapHtml = buildGeofenceMapHtml(allGeofences, theme || 'dark', direction);
 
     // Listen for map click (web iframe)
     useEffect(() => {
@@ -223,7 +241,7 @@ export default function GeofencesScreen() {
                 radius: parseInt(newRadius) || 500,
                 alarmType: newAlarmType,
                 imei: newImei,
-                deviceName: devices.find((d: Device) => d.imei === newImei)?.deviceName,
+                deviceName: safeDevices.find((d: Device) => d.imei === newImei)?.deviceName,
                 createdAt: new Date().toISOString(),
                 source: 'local',
             });
@@ -243,24 +261,28 @@ export default function GeofencesScreen() {
         if (isLocal) {
             removeGeofence(fenceId);
         } else {
-            Alert.alert('Delete Geofence', 'Remove from API? (Not all accounts support this)', [
-                { text: 'Cancel' },
-                {
-                    text: 'Delete', style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const fence = apiGeofences.find(f => f.id === fenceId);
-                            const imei = fence?.imei || '';
-                            if (imei) {
-                                await gimiService.deleteDeviceFence(accessToken!, imei, fenceId);
+            Alert.alert(
+                t('geofences.deleteConfirmTitle'),
+                t('geofences.deleteConfirmDesc'),
+                [
+                    { text: t('common.cancel') },
+                    {
+                        text: t('common.delete'), style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                const fence = safeApiGeofences.find(f => f.id === fenceId);
+                                const imei = fence?.imei || '';
+                                if (imei) {
+                                    await gimiService.deleteDeviceFence(accessToken!, imei, fenceId);
+                                }
+                                await fetchGeofences();
+                            } catch (err: any) {
+                                Alert.alert(t('geofences.deleteFailed'), err.message || 'API error');
                             }
-                            await fetchGeofences();
-                        } catch (err: any) {
-                            Alert.alert('Delete failed', err.message || 'API error');
-                        }
+                        },
                     },
-                },
-            ]);
+                ]
+            );
         }
     };
 
@@ -274,13 +296,13 @@ export default function GeofencesScreen() {
                     style={[s.tabBtn, viewMode === 'list' && s.tabBtnActive]}
                     onPress={() => setViewMode('list')}
                 >
-                    <Text style={[s.tabBtnText, viewMode === 'list' && { color: C.accent }]}><Feather name="list" size={13} color={viewMode === 'list' ? C.accent : '#94a3b8'} /> Fences ({allGeofences.length})</Text>
+                    <Text style={[s.tabBtnText, viewMode === 'list' && { color: C.accent }]}><Feather name="list" size={13} color={viewMode === 'list' ? C.accent : '#94a3b8'} /> {t('geofences.fences')} ({allGeofences.length})</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[s.tabBtn, viewMode === 'create' && s.tabBtnActive]}
                     onPress={() => setViewMode('create')}
                 >
-                    <Text style={[s.tabBtnText, viewMode === 'create' && { color: C.accent }]}><Feather name="plus-circle" size={13} color={viewMode === 'create' ? C.accent : '#94a3b8'} /> Create</Text>
+                    <Text style={[s.tabBtnText, viewMode === 'create' && { color: C.accent }]}><Feather name="plus-circle" size={13} color={viewMode === 'create' ? C.accent : '#94a3b8'} /> {t('geofences.create')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.refreshBtn} onPress={fetchGeofences}>
                     <Text style={[s.tabBtnText, { color: C.accent }]}><Feather name="refresh-cw" size={13} color={C.accent} /></Text>
@@ -295,11 +317,13 @@ export default function GeofencesScreen() {
                     <div style={{ width: '100%', height: '100%' }}>
                         <iframe srcDoc={mapHtml} style={{ width: '100%', height: '100%', border: 'none' }} />
                     </div>
-                ) : (
+                ) : isFocused ? (
                     <View style={{ flex: 1 }}>
                         <WebView
+                            key={`geofences-map-${theme || 'dark'}`}
                             originWhitelist={['*']}
                             source={{ html: mapHtml }}
+                            style={{ flex: 1 }}
                             containerStyle={{ width: '100%', height: '100%' }}
                             onMessage={(event) => {
                                 try {
@@ -314,6 +338,8 @@ export default function GeofencesScreen() {
                             domStorageEnabled={true}
                         />
                     </View>
+                ) : (
+                    <View style={{ flex: 1, backgroundColor: C.bgPrimary }} />
                 )}
             </View>
 
@@ -326,10 +352,10 @@ export default function GeofencesScreen() {
                         keyExtractor={f => f.fenceId}
                         style={s.list}
                         showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 90 }}
+                        contentContainerStyle={{ paddingBottom: 100 }}
                         ListEmptyComponent={
                             <Text style={[s.emptyText, { color: C.textMuted }]}>
-                                {loading ? 'Loading...' : 'No geofences yet. Tap ➕ Create.'}
+                                {loading ? t('common.loading') : t('geofences.noGeofences')}
                             </Text>
                         }
                         renderItem={({ item }) => {
@@ -343,7 +369,7 @@ export default function GeofencesScreen() {
                                         <Text style={s.fenceName}>{item.fenceName}</Text>
                                         <Text style={s.fenceMeta}>
                                             r={item.radius}m
-                                            {item.imei ? ` · ${item.imei}` : ' · All devices'}
+                                            {item.imei ? ` · ${item.imei}` : ` · ${t('geofences.allDevices')}`}
                                             {isLocal ? ' · 💾 Local' : ''}
                                         </Text>
                                     </View>
@@ -363,27 +389,27 @@ export default function GeofencesScreen() {
             {/* ── Create form */}
             {viewMode === 'create' && (
                 <View style={s.panel}>
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
-                        <Text style={s.formLabel}>FENCE NAME *</Text>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                        <Text style={s.formLabel}>{t('geofences.fenceNameLabel')}</Text>
                         <TextInput style={s.input} value={newName} onChangeText={setNewName}
-                            placeholder="e.g. Office Zone" placeholderTextColor={C.textMuted} />
+                            placeholder={t('geofences.placeholderName')} placeholderTextColor={C.textMuted} />
 
-                        <Text style={s.formLabel}>DEVICE (optional)</Text>
+                        <Text style={s.formLabel}>{t('geofences.deviceLabel')}</Text>
                         <View style={s.pickerWrap}>
                             <Picker selectedValue={newImei} onValueChange={setNewImei}
                                 style={s.picker} dropdownIconColor={C.textMuted}>
-                                <Picker.Item label="All devices" value="" color={C.textMuted} />
-                                {devices.map((d: Device) => (
+                                <Picker.Item label={t('geofences.allDevices')} value="" color={C.textMuted} />
+                                {safeDevices.map((d: Device) => (
                                     <Picker.Item key={d.imei} label={d.deviceName} value={d.imei} color={C.textPrimary} />
                                 ))}
                             </Picker>
                         </View>
 
-                        <Text style={s.formLabel}>RADIUS (meters)</Text>
+                        <Text style={s.formLabel}>{t('geofences.radiusLabel')}</Text>
                         <TextInput style={s.input} value={newRadius} onChangeText={setNewRadius}
                             keyboardType="numeric" placeholder="500" placeholderTextColor={C.textMuted} />
 
-                        <Text style={s.formLabel}>ALARM TYPE</Text>
+                        <Text style={s.formLabel}>{t('geofences.alarmTypeLabel')}</Text>
                         <View style={s.alarmRow}>
                             {(['in', 'out', 'in,out'] as AlarmType[]).map(t => (
                                 <TouchableOpacity
@@ -399,7 +425,7 @@ export default function GeofencesScreen() {
                         <View style={s.locationRow}>
                             <View style={[s.locationStatus, { backgroundColor: newLat ? `${C.online}20` : `${C.warning}20` }]}>
                                 <Text style={{ color: newLat ? C.online : C.warning, fontSize: 12 }}>
-                                    {newLat ? <><Feather name="map-pin" size={12} color={C.online} /> {newLat.toFixed(4)}, {newLng!.toFixed(4)}</> : <><Feather name="map" size={12} color={C.warning} /> Tap map above to set location</>}
+                                    {newLat ? <><Feather name="map-pin" size={12} color={C.online} /> {newLat.toFixed(4)}, {newLng!.toFixed(4)}</> : <><Feather name="map" size={12} color={C.warning} /> {t('geofences.tapMapHint')}</>}
                                 </Text>
                             </View>
                         </View>
@@ -411,7 +437,7 @@ export default function GeofencesScreen() {
                         >
                             {creating
                                 ? <ActivityIndicator color="#fff" />
-                                : <Text style={s.createBtnText}><Feather name="check" size={14} color="#fff" /> Create Geofence</Text>
+                                : <Text style={s.createBtnText}><Feather name="check" size={14} color="#fff" /> {t('geofences.createGeofenceBtn')}</Text>
                             }
                         </TouchableOpacity>
                     </ScrollView>

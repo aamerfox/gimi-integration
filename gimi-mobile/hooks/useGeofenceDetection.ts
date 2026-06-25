@@ -43,10 +43,15 @@ export function useGeofenceDetection() {
     }, [accessToken, fetchApiGeofences, devices.length]);
 
     // Combine API geofences and Local geofences
-    const combinedGeofences = useMemo(() => [
-        ...apiGeofences,
-        ...localGeofences.map(g => ({ ...g, isLocal: true }))
-    ], [apiGeofences, localGeofences]);
+    const combinedGeofences = useMemo(() => {
+        const allowedImeis = devices.map(d => d.imei).filter(Boolean);
+        const filteredLocal = localGeofences.filter(g => !g.imei || allowedImeis.includes(g.imei));
+        return [
+            ...apiGeofences,
+            ...filteredLocal.map(g => ({ ...g, isLocal: true }))
+        ];
+    }, [apiGeofences, localGeofences, devices]);
+
 
     const { addEvent } = useGeofenceEventStore();
 

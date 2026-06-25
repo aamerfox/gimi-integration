@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
 import { useThemeStore } from '@/store/theme';
 import COLORS from '@/constants/Colors';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +33,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: C.textSecondary,
         tabBarStyle: {
           position: 'absolute',
-          bottom: 16,
+          bottom: insets.bottom > 0 ? insets.bottom + 12 : (Platform.OS === 'android' ? 36 : 16),
           left: 16,
           right: 16,
           backgroundColor: C.bgCard,

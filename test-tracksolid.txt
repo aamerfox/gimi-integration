@@ -1,0 +1,45 @@
+=== GIMI/TrackSolid Pro API Test (UTC + All Endpoints) ===
+Local time: 2026-06-17T20:33:10.627Z
+UTC timestamp: 2026-06-17 20:33:10
+APP_KEY: 8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558 (length: 48)
+APP_SECRET: d1bf0654370a4a148abacd02abe8146e
+
+  FAIL(1001) | https://hk-open.tracksolidpro.com/route/rest | pwd=as-is | ts=2026-06-17 20:33:10
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | https://hk-open.tracksolidpro.com/route/rest | pwd=md5(pwd) | ts=2026-06-17 20:33:12
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1002) | https://eu-open.tracksolidpro.com/route/rest | pwd=as-is | ts=2026-06-17 20:33:13
+       msg: 非法用户
+  FAIL(1002) | https://eu-open.tracksolidpro.com/route/rest | pwd=md5(pwd) | ts=2026-06-17 20:33:14
+       msg: 非法用户
+  FAIL(1001) | https://us-open.tracksolidpro.com/route/rest | pwd=as-is | ts=2026-06-17 20:33:14
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | https://us-open.tracksolidpro.com/route/rest | pwd=md5(pwd) | ts=2026-06-17 20:33:15
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | http://hk-open.tracksolidpro.com/route/rest | pwd=as-is | ts=2026-06-17 20:33:16
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | http://hk-open.tracksolidpro.com/route/rest | pwd=md5(pwd) | ts=2026-06-17 20:33:18
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1002) | http://eu-open.tracksolidpro.com/route/rest | pwd=as-is | ts=2026-06-17 20:33:19
+       msg: 非法用户
+  FAIL(1002) | http://eu-open.tracksolidpro.com/route/rest | pwd=md5(pwd) | ts=2026-06-17 20:33:20
+       msg: 非法用户
+  FAIL(1001) | http://us-open.tracksolidpro.com/route/rest | pwd=as-is | ts=2026-06-17 20:33:20
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | http://us-open.tracksolidpro.com/route/rest | pwd=md5(pwd) | ts=2026-06-17 20:33:22
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | http://open.10000track.com/route/rest | pwd=as-is | ts=2026-06-17 20:33:22
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | http://open.10000track.com/route/rest | pwd=md5(pwd) | ts=2026-06-17 20:33:23
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | https://open.10000track.com/route/rest | pwd=as-is | ts=2026-06-17 20:33:24
+       msg: 缺少AppKey参数或无效的AppKey
+  FAIL(1001) | https://open.10000track.com/route/rest | pwd=md5(pwd) | ts=2026-06-17 20:33:25
+       msg: 缺少AppKey参数或无效的AppKey
+
+=== ALL ATTEMPTS FAILED ===
+Possible causes:
+  1. AppKey not yet activated on any TrackSolid Pro node
+  2. AppKey belongs to a different platform (not TrackSolid Pro)
+  3. AppKey/AppSecret pair is incorrect
+  4. Account may be on a custom/private server

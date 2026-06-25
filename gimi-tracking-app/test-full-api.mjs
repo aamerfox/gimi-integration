@@ -5,12 +5,12 @@
  */
 
 import crypto from 'crypto';
-import { writeFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 
 const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
 const APP_SECRET = 'd1bf0654370a4a148abacd02abe8146e';
-const ACCOUNT = 'celorvx';
-const PASSWORD_MD5 = 'f957a13a22549e419540196068eadbc7';
+const ACCOUNT = 'saudiextest';
+const PASSWORD_MD5 = '9789fa8d2b5505618019e413ea9a8573';
 
 const ENDPOINTS = [
     'https://eu-open.tracksolidpro.com/route/rest',
@@ -70,24 +70,45 @@ out('');
 
 // ── T01: Auth ─────────────────────────────────────────────────────────────────
 out('--- T01: Authentication ---');
-for (const ep of ENDPOINTS) {
-    const r = await call(ep, { method: 'jimi.oauth.token.get', user_id: ACCOUNT, user_pwd_md5: PASSWORD_MD5, expires_in: 7200 });
-    out(`  ${ep}  ->  code=${r.code}  msg=${r.message || r.error || r.raw || ''}`);
-    if (r.code === 0) {
-        // result can be a string (token) OR an object {access_token, userId, ...}
-        if (typeof r.result === 'string') {
-            ACCESS_TOKEN = r.result;
-        } else if (r.result?.access_token) {
-            ACCESS_TOKEN = r.result.access_token;
-            USER_ID = r.result.userId || r.result.user_id;
-        } else if (r.result?.accessToken) {
-            ACCESS_TOKEN = r.result.accessToken;
-        }
-        BASE_URL = ep;
-        out(`  Raw result: ${JSON.stringify(r.result).slice(0, 200)}`);
+let cachedToken = null;
+if (existsSync('../scratch/token.txt')) {
+    cachedToken = readFileSync('../scratch/token.txt', 'utf8').trim();
+}
+if (cachedToken) {
+    out(`  Found cached token: ${cachedToken.slice(0, 8)}...`);
+    const testCall = await call(BASE_URL, { method: 'jimi.user.device.list', access_token: cachedToken, target: ACCOUNT });
+    if (testCall.code === 0) {
+        ACCESS_TOKEN = cachedToken;
         logResult('T01', 'Authentication (jimi.oauth.token.get)', 'PASS', 0,
-            `Token: ${String(ACCESS_TOKEN).slice(0, 50)}  |  Endpoint: ${ep}`, null);
-        break;
+            `Token: ${String(ACCESS_TOKEN).slice(0, 50)} (reused from cache) | Endpoint: ${BASE_URL}`, null);
+    } else {
+        out(`  Cached token invalid (code ${testCall.code}: ${testCall.message}). Attempting login...`);
+    }
+}
+
+if (!ACCESS_TOKEN) {
+    for (const ep of ENDPOINTS) {
+        const r = await call(ep, { method: 'jimi.oauth.token.get', user_id: ACCOUNT, user_pwd_md5: PASSWORD_MD5, expires_in: 7200 });
+        out(`  ${ep}  ->  code=${r.code}  msg=${r.message || r.error || r.raw || ''}`);
+        if (r.code === 0) {
+            if (typeof r.result === 'string') {
+                ACCESS_TOKEN = r.result;
+            } else if (r.result?.access_token) {
+                ACCESS_TOKEN = r.result.access_token;
+                USER_ID = r.result.userId || r.result.user_id;
+            } else if (r.result?.accessToken) {
+                ACCESS_TOKEN = r.result.accessToken;
+            }
+            BASE_URL = ep;
+            out(`  Raw result: ${JSON.stringify(r.result).slice(0, 200)}`);
+            logResult('T01', 'Authentication (jimi.oauth.token.get)', 'PASS', 0,
+                `Token: ${String(ACCESS_TOKEN).slice(0, 50)}  |  Endpoint: ${ep}`, null);
+            
+            try { writeFileSync('../scratch/token.txt', ACCESS_TOKEN, 'utf8'); } catch (e) {
+                out(`  Failed to write token cache: ${e.message}`);
+            }
+            break;
+        }
     }
 }
 if (!ACCESS_TOKEN) {
@@ -204,7 +225,7 @@ out('--- T08: Device Alarms ---');
 if (ACCESS_TOKEN && FIRST_IMEI) {
     const now = new Date(), weekAgo = new Date(now - 7 * 24 * 3600 * 1000);
     const r = await call(BASE_URL, {
-        method: 'jimi.open.device.alarm.list', access_token: ACCESS_TOKEN,
+        method: 'jimi.device.alarm.list', access_token: ACCESS_TOKEN,
         imei: FIRST_IMEI, begin_time: fmtUtc(weekAgo), end_time: fmtUtc(now),
         page_no: '1', page_size: '20',
     });
@@ -224,7 +245,7 @@ out('--- T09: All-Device Alarms ---');
 if (ACCESS_TOKEN) {
     const now = new Date(), weekAgo = new Date(now - 7 * 24 * 3600 * 1000);
     const r = await call(BASE_URL, {
-        method: 'jimi.open.device.alarm.list', access_token: ACCESS_TOKEN,
+        method: 'jimi.device.alarm.list', access_token: ACCESS_TOKEN,
         target: ACCOUNT, begin_time: fmtUtc(weekAgo), end_time: fmtUtc(now),
         page_no: '1', page_size: '20',
     });

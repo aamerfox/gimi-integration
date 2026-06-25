@@ -193,8 +193,11 @@ export default function History() {
             center: [24.7136, 46.6753],
             zoom: 6,
             zoomControl: false,
+            attributionControl: false,
             layers: [streetLayer] // Default to street
         });
+
+        L.control.attribution({ prefix: false }).addTo(map);
 
         const isRtl = document.documentElement.dir === 'rtl';
         L.control.layers(baseMaps, undefined, { position: isRtl ? 'bottomleft' : 'bottomright' }).addTo(map);
@@ -410,7 +413,7 @@ export default function History() {
                 }));
 
                 // Parse Stops returned from Tracksolid API
-                const stopRows = resStops?.data?.rows || resStops?.result || [];
+                const stopRows = resStops?.data?.rows || (Array.isArray(resStops?.result) ? resStops.result : (resStops?.result?.list || []));
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const parsedStops: StopPoint[] = stopRows.map((s: any) => ({
                     lat: s.lat,

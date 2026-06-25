@@ -12,7 +12,10 @@
         "noData": "No data available",
         "selectDevice": "Select a device",
         "connecting": "Connecting...",
-        "searchBtn": "Search"
+        "searchBtn": "Search",
+        "speed": "Speed",
+        "kmh": "km/h",
+        "updated": "Updated"
     },
     "tabs": {
         "map": "Live Map",
@@ -48,15 +51,19 @@
         "filteredNoDataHint": "All track points were filtered by the current Positioning Mode. Try switching to 'Optimized' or 'All' to view cellular/Wi-Fi positioning points."
     },
     "alertsFilters": {
-        "all": "All",
+        "all": "All Alarms",
         "geofence": "Geofence",
-        "battery": "Battery"
+        "battery": "Battery",
+        "refresh": "Refresh"
     },
     "alertDesc": {
         "enterGeofence": "Enter geo-fence",
         "exitGeofence": "Exit geo-fence"
     },
     "alerts": {
+        "alarms": "Alarms",
+        "loadingAlarms": "Loading alarms...",
+        "noAlarms": "No alarms in the last 7 days",
         "rules": "Alert Rules",
         "addAlert": "Add Alert",
         "addRule": "Add Alert Rule",
@@ -91,8 +98,11 @@
         "noDevicesLocation": "No devices with location data found",
         "ringTag": "Ring Tag",
         "ringSuccess": "Sent ring command to {{name}}",
-        "ringFail": "Failed to send ring command"
+        "ringFail": "Failed to send ring command",
+        "hideDevices": "Hide Device List",
+        "showDevices": "Show Device List"
     },
+
     "devices": {
         "title": "Device Management",
         "addDevice": "Add Device",
@@ -155,12 +165,35 @@
             "4h": "4 hours",
             "24h": "24 hours",
             "7d": "7 days"
-        }
+        },
+        "securedBy": "Secured by HMAC-SHA256",
+        "autoRefreshes": "Auto-refreshes every 30s",
+        "linkExpired": "Link Expired",
+        "linkExpiredDesc": "This share link has expired. Ask the owner to generate a new one.",
+        "linkInvalid": "Invalid Link",
+        "linkInvalidDesc": "This link is invalid or has been tampered with."
+    },
+    "geofences": {
+        "fences": "Fences",
+        "create": "Create",
+        "noGeofences": "No geofences yet. Tap ➕ Create.",
+        "fenceNameLabel": "FENCE NAME *",
+        "placeholderName": "e.g. Office Zone",
+        "deviceLabel": "DEVICE (optional)",
+        "allDevices": "All devices",
+        "radiusLabel": "RADIUS (meters)",
+        "alarmTypeLabel": "ALARM TYPE",
+        "tapMapHint": "Tap map above to set location",
+        "createGeofenceBtn": "Create Geofence",
+        "deleteConfirmTitle": "Delete Geofence",
+        "deleteConfirmDesc": "Are you sure you want to delete this geofence?",
+        "deleteFailed": "Delete failed"
     },
     "errors": {
         "invalidCredentials": "Invalid username or password.",
         "invalidSignature": "Invalid application signature.",
         "tokenExpired": "Session expired, please log in again.",
+        "unsupportedCommand": "This device type does not support remote ring commands.",
         "unknown": "An unknown error occurred."
     }
 }

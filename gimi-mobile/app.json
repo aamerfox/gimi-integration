@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.traceplus.fleet"
     },
     "android": {
-      "package": "com.saudiex.gimimobile.new",
+      "package": "com.saudiex.gimimobile.v2",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0a0f1d"

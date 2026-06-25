@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { I18nManager, Platform } from 'react-native';
+import { I18nManager, Platform, Alert, DevSettings } from 'react-native';
 
 export type LanguageCode = 'en' | 'ar';
 
@@ -32,8 +32,24 @@ export const useLanguageStore = create<LanguageState>()(
 
                 // Allow RTL formatting on Android/iOS
                 if (Platform.OS !== 'web') {
+                    const currentRTL = I18nManager.isRTL;
                     I18nManager.allowRTL(isRTL);
                     I18nManager.forceRTL(isRTL);
+
+                    if (currentRTL !== isRTL) {
+                        if (__DEV__) {
+                            // Automatically reload JavaScript bundle in development to apply layout direction
+                            DevSettings.reload();
+                        } else {
+                            Alert.alert(
+                                lang === 'ar' ? 'تغيير لغة التطبيق' : 'Language Change',
+                                lang === 'ar'
+                                    ? 'يرجى إعادة تشغيل التطبيق بالكامل لتطبيق اتجاه اللغة العربية (RTL) بشكل صحيح.'
+                                    : 'Please restart the app completely to apply the English layout direction (LTR) correctly.',
+                                [{ text: lang === 'ar' ? 'حسناً' : 'OK' }]
+                            );
+                        }
+                    }
                 } else {
                     // Update document direction immediately on web
                     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';

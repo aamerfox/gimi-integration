@@ -57,8 +57,6 @@ const FILTERS = [
     { key: 'battery', label: 'Battery' },
 ];
 
-type TabKey = 'alarms' | 'events' | 'rules';
-
 export default function AlertsScreen() {
     const { t } = useTranslation();
     const { accessToken, userId } = useAuthStore();
@@ -71,12 +69,16 @@ export default function AlertsScreen() {
         apiGeofences, 
         fetchApiGeofences 
     } = useGeofenceStore();
-    const C = COLORS[theme];
+    
+    const safeDevices = Array.isArray(devices) ? devices : [];
+    const C = COLORS[theme || 'dark'] || COLORS.dark;
 
     // Combine local geofences and API geofences for the picker
+    const safeApiFences = Array.isArray(apiGeofences) ? apiGeofences : [];
+    const safeLocalFences = Array.isArray(localGeofences) ? localGeofences : [];
     const combinedGeofences = [
-        ...apiGeofences,
-        ...localGeofences.map(g => ({ ...g, isLocal: true }))
+        ...safeApiFences,
+        ...safeLocalFences.map(g => ({ ...g, isLocal: true }))
     ];
 
     // Fetch API geofences on mount or when devices load
@@ -90,11 +92,16 @@ export default function AlertsScreen() {
         }
     }, [fetchApiGeofences, devices.length]);
 
+    // Determine if this account has its own geofences
+    const hasOwnGeofences = safeApiFences.length > 0 || safeLocalFences.length > 0;
+
     const FILTERS = [
         { key: 'all', label: t('alertsFilters.all') },
-        { key: 'geofence', label: t('alertsFilters.geofence') },
+        // Only show geofence filter if the account has geofences
+        ...(hasOwnGeofences ? [{ key: 'geofence', label: t('alertsFilters.geofence') }] : []),
         { key: 'battery', label: t('alertsFilters.battery') },
     ];
+    const refreshLabel = t('alertsFilters.refresh');
 
     // Modal state for Add Rule
     const [showAddRule, setShowAddRule] = useState(false);
@@ -106,7 +113,7 @@ export default function AlertsScreen() {
 
     const handleAddRule = () => {
         if (!ruleName.trim()) return;
-        const device = devices.find((d: Device) => d.imei === ruleImei);
+        const device = safeDevices.find((d: Device) => d.imei === ruleImei);
         const fence = combinedGeofences.find(f => f.id === ruleFenceId);
         addRule({
             name: ruleName.trim(),
@@ -122,7 +129,6 @@ export default function AlertsScreen() {
         setRuleName(''); setRuleImei(''); setRuleFenceId(''); setRuleSpeedLimit('120');
     };
 
-    const [tab, setTab] = useState<TabKey>('alarms');
     const [alarms, setAlarms] = useState<Alarm[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -141,15 +147,13 @@ export default function AlertsScreen() {
     // Auto-refresh every 60 seconds when Alerts tab is active
     const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
     useEffect(() => {
-        if (tab === 'alarms') {
-            autoRefreshRef.current = setInterval(() => {
-                fetchAlarms();
-            }, 60000);
-        }
+        autoRefreshRef.current = setInterval(() => {
+            fetchAlarms();
+        }, 60000);
         return () => {
             if (autoRefreshRef.current) clearInterval(autoRefreshRef.current);
         };
-    }, [tab]);
+    }, []);
 
     const fetchAlarms = useCallback(async () => {
         if (!accessToken || !userId) return;
@@ -158,7 +162,7 @@ export default function AlertsScreen() {
             const now = new Date();
             const weekAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
             const fmt = (d: Date) => d.toISOString().slice(0, 19).replace('T', ' ');
-            const imeis = devices.map((d: Device) => d.imei);
+            const imeis = safeDevices.map((d: Device) => d.imei);
 
             // Fetch alarms for each device (max 5 concurrent to avoid rate-limiting)
             const results = await Promise.allSettled(
@@ -181,7 +185,7 @@ export default function AlertsScreen() {
                 if (type === 'out') type = 'geofenceOut';
 
                 const desc = a.alarmTypeName || a.alarmDesc || a.alarmName || a.desc || type || '';
-                const devName = a.deviceName || devices.find((d: Device) => d.imei === a.imei)?.deviceName || a.imei || '';
+                const devName = a.deviceName || safeDevices.find((d: Device) => d.imei === a.imei)?.deviceName || a.imei || '';
 
                 return {
                     alarmId: a.alarmId || a.id || `${a.imei}-${a.gpsTime || a.alertTime}-${Math.random()}`,
@@ -194,21 +198,59 @@ export default function AlertsScreen() {
                     deviceName: devName,
                 };
             });
+
+            // Also merge local geofence events for OCI accounts
+            const allowedImeis = safeDevices.map((d: Device) => d.imei).filter(Boolean);
+            const localGeofenceAlarms: Alarm[] = (geofenceEvents || [])
+                .filter((evt) => allowedImeis.includes(evt.imei))
+                .map((evt) => {
+                    const isEntered = evt.type === 'enter';
+                    const alarmType = isEntered ? 'geofenceIn' : 'geofenceOut';
+                    const alarmDesc = isEntered
+                        ? `Enter geo-fence(${evt.fenceName})`
+                        : `Exit geo-fence(${evt.fenceName})`;
+                    const gpsTime = evt.timestamp.replace('T', ' ').slice(0, 19);
+
+                    return {
+                        alarmId: `local-${evt.imei}-${evt.timestamp}-${Math.random()}`,
+                        imei: evt.imei,
+                        alarmType,
+                        alarmDesc,
+                        lat: evt.lat || 0,
+                        lng: evt.lng || 0,
+                        speed: 0,
+                        gpsTime,
+                        deviceName: evt.deviceName || safeDevices.find((d: Device) => d.imei === evt.imei)?.deviceName || evt.imei || '',
+                    };
+                });
+
+            const combinedAlarms = [...mapped, ...localGeofenceAlarms];
             // Sort newest first
-            mapped.sort((a, b) => (b.gpsTime > a.gpsTime ? 1 : -1));
-            setAlarms(mapped);
+            combinedAlarms.sort((a, b) => (b.gpsTime > a.gpsTime ? 1 : -1));
+            setAlarms(combinedAlarms);
             setPage(1);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to load alarms');
         } finally { setLoading(false); }
-    }, [accessToken, userId, devices]);
+    }, [accessToken, userId, safeDevices, geofenceEvents]);
 
-    useEffect(() => { if (tab === 'alarms') fetchAlarms(); }, [tab, fetchAlarms]);
 
-    // Filter alarms
+    useEffect(() => { fetchAlarms(); }, [fetchAlarms]);
+
+    // Helper: is this alarm a geofence type?
+    const isGeofenceAlarm = (type: string) => {
+        const t = type.toLowerCase();
+        return t.includes('geofence') || t.includes('fence') || t === 'in' || t === 'out';
+    };
+
+    // Filter alarms — skip geofence alarms if the account has no own geofences (unless it is a local event)
     const filteredAlarms = alarms.filter(a => {
+        // If account has no geofences, hide all geofence-type alarms
+        if (!hasOwnGeofences && isGeofenceAlarm(a.alarmType) && !a.alarmId.startsWith('local-')) return false;
+
+
         if (filter === 'all') return true;
-        if (filter === 'geofence') return a.alarmType.toLowerCase().includes('geofence') || a.alarmType.toLowerCase().includes('fence');
+        if (filter === 'geofence') return isGeofenceAlarm(a.alarmType);
         if (filter === 'sos') return a.alarmType.toLowerCase().includes('sos');
         if (filter === 'battery') return a.alarmType.toLowerCase().includes('battery') || a.alarmType.toLowerCase().includes('power');
         return a.alarmType.toLowerCase().includes(filter);
@@ -251,250 +293,53 @@ export default function AlertsScreen() {
         );
     };
 
-    const renderEvent = ({ item }: { item: GeofenceEvent }) => (
-        <View style={s.alarmItem}>
-            <View style={[s.alarmIcon, { backgroundColor: `${item.type === 'enter' ? C.online : C.warning}20` }]}>
-                <Feather name={item.type === 'enter' ? 'log-in' : 'log-out'} size={20} color={item.type === 'enter' ? C.online : C.warning} />
-            </View>
-            <View style={s.alarmInfo}>
-                <Text style={s.alarmType}>{item.type === 'enter' ? 'Geofence Enter' : 'Geofence Exit'}</Text>
-                <Text style={s.alarmDevice}>{item.deviceName} → {item.fenceName}</Text>
-                <Text style={s.alarmTime}>{new Date(item.timestamp).toLocaleString()}</Text>
-            </View>
-        </View>
-    );
 
-    const renderRule = ({ item }: { item: AlertRule }) => (
-        <View style={s.ruleItem}>
-            <View style={[s.alarmIcon, { backgroundColor: `${C.accent}15` }]}>
-                <Feather 
-                   name={item.type === 'geofence' ? 'map-pin' : item.type === 'overspeed' ? 'alert-circle' : item.type === 'offline' ? 'wifi-off' : 'battery'} 
-                   size={18} color={C.accent} 
-                />
-            </View>
-            <View style={s.alarmInfo}>
-                <Text style={s.alarmType}>{item.name}</Text>
-                <Text style={s.alarmDevice}>
-                    {item.deviceName || (item.imei ? item.imei : 'All devices')}
-                    {item.speedLimit ? ` · ${item.speedLimit} km/h` : ''}
-                    {item.fenceName ? ` · ${item.fenceName}` : ''}
-                </Text>
-            </View>
-            <TouchableOpacity
-                style={[s.toggleBtn, { backgroundColor: item.enabled ? `${C.accent}20` : C.bgElevated }]}
-                onPress={() => toggleRule(item.id)}
-            >
-                <Text style={[s.toggleText, { color: item.enabled ? C.accent : C.textMuted }]}>
-                    {item.enabled ? 'ON' : 'OFF'}
-                </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.deleteBtn} onPress={() => removeRule(item.id)}>
-                <Text style={s.deleteBtnText}>✕</Text>
-            </TouchableOpacity>
-        </View>
-    );
 
     return (
         <View style={s.container}>
-            {/* ── Top tab bar */}
-            <View style={s.tabBar}>
-                {([
-                    { key: 'alarms', label: `Alarms (${alarms.length})` },
-                    { key: 'events', label: `Events (${geofenceEvents.length})` },
-                    { key: 'rules', label: `Rules (${rules.length})` },
-                ] as { key: TabKey; label: string }[]).map(t => (
-                    <TouchableOpacity
-                        key={t.key}
-                        style={[s.tabBtn, tab === t.key && s.tabBtnActive]}
-                        onPress={() => setTab(t.key)}
-                    >
-                        <Text style={[s.tabBtnText, tab === t.key && { color: C.accent }]}>{t.label}</Text>
-                    </TouchableOpacity>
-                ))}
+            {/* ── Header */}
+            <View style={s.headerBar}>
+                <Text style={s.headerTitle}>{t('alerts.alarms')} ({alarms.length})</Text>
             </View>
 
-            {/* ── Alarm filter bar */}
-            {tab === 'alarms' && (
-                <>
-                    <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={false} 
-                        style={s.filterBar}
-                        contentContainerStyle={s.filterBarContent}
+            {/* ── Filter bar */}
+            <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                style={s.filterBar}
+                contentContainerStyle={s.filterBarContent}
+            >
+                {FILTERS.map(f => (
+                    <TouchableOpacity
+                        key={f.key}
+                        style={[s.filterChip, filter === f.key && s.filterChipActive]}
+                        onPress={() => setFilter(f.key)}
                     >
-                        {FILTERS.map(f => (
-                            <TouchableOpacity
-                                key={f.key}
-                                style={[s.filterChip, filter === f.key && s.filterChipActive]}
-                                onPress={() => setFilter(f.key)}
-                            >
-                                <Text style={[s.filterText, filter === f.key && { color: C.accent }]}>{f.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                        <TouchableOpacity style={s.refreshChip} onPress={fetchAlarms}>
-                            <Text style={[s.filterText, { color: C.accent }]}>⟳ Refresh</Text>
-                        </TouchableOpacity>
-                    </ScrollView>
+                        <Text style={[s.filterText, filter === f.key && { color: C.accent }]} numberOfLines={1}>{f.label}</Text>
+                    </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={s.refreshChip} onPress={fetchAlarms}>
+                    <Text style={[s.filterText, { color: C.accent }]} numberOfLines={1}>⟳ {refreshLabel}</Text>
+                </TouchableOpacity>
+            </ScrollView>
 
-                    {error && <Text style={s.errorText}>{error}</Text>}
-                    {loading && <ActivityIndicator color={C.accent} style={{ marginVertical: 8 }} />}
+            {error && <Text style={s.errorText}>{error}</Text>}
+            {loading && <ActivityIndicator color={C.accent} style={{ marginVertical: 8 }} />}
 
-                    <FlatList
-                        data={paged}
-                        keyExtractor={a => a.alarmId}
-                        renderItem={renderAlarm}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 90 }}
-                        onEndReached={() => { if (paged.length < filteredAlarms.length) setPage(p => p + 1); }}
-                        onEndReachedThreshold={0.3}
-                        ListEmptyComponent={
-                            <Text style={[s.emptyText, { color: C.textMuted }]}>
-                                {loading ? 'Loading alarms...' : 'No alarms in the last 7 days'}
-                            </Text>
-                        }
-                    />
-                </>
-            )}
-
-            {/* ── Geofence events */}
-            {tab === 'events' && (
-                <>
-                    <View style={s.eventHeader}>
-                        <Text style={s.eventCount}>{geofenceEvents.length} events</Text>
-                        <TouchableOpacity onPress={clearEvents}>
-                            <Text style={[s.clearBtn, { color: C.danger }]}>Clear all</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <FlatList
-                        data={[...geofenceEvents].reverse()}
-                        keyExtractor={(e, i) => `${e.fenceId}-${i}`}
-                        renderItem={renderEvent}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 90 }}
-                        ListEmptyComponent={
-                            <Text style={[s.emptyText, { color: C.textMuted }]}>No geofence events recorded</Text>
-                        }
-                    />
-                </>
-            )}
-
-            {/* ── Alert rules */}
-            {tab === 'rules' && (
-                <>
-                    <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-                        <TouchableOpacity style={[s.tabBtnActive, { backgroundColor: C.accent, padding: 12, borderRadius: 8, alignItems: 'center' }]} onPress={() => setShowAddRule(true)}>
-                            <Text style={{ color: C.bgPrimary, fontWeight: '700' }}>+ {t('common.add')} Rule</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <FlatList
-                        data={rules}
-                        keyExtractor={r => r.id}
-                        renderItem={renderRule}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 90 }}
-                        ListEmptyComponent={
-                            <View style={s.emptyRules}>
-                                <Feather name="settings" size={40} color={C.textMuted} style={{ marginBottom: 8 }} />
-                                <Text style={[s.emptyText, { color: C.textMuted }]}>
-                                    No alert rules yet.{'\n'}Create rules to track your fleet.
-                                </Text>
-                            </View>
-                        }
-                    />
-
-                    {/* Add Rule Modal */}
-                    <Modal visible={showAddRule} transparent animationType="slide">
-                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
-                            <View style={{ backgroundColor: C.bgPrimary, borderRadius: 12, padding: 20 }}>
-                                <Text style={{ fontSize: 18, fontWeight: '700', color: C.textPrimary, marginBottom: 16 }}>Create Alert Rule</Text>
-
-                                <Text style={{ color: C.textSecondary, marginBottom: 6 }}>{t('devices.deviceName')} / IMEI</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
-                                    <TouchableOpacity
-                                        style={[s.filterChip, !ruleImei && s.filterChipActive]}
-                                        onPress={() => setRuleImei('')}>
-                                        <Text style={[s.filterText, !ruleImei && { color: C.accent }]}>All</Text>
-                                    </TouchableOpacity>
-                                    {devices.map(d => (
-                                        <TouchableOpacity
-                                            key={d.imei}
-                                            style={[s.filterChip, ruleImei === d.imei && s.filterChipActive]}
-                                            onPress={() => setRuleImei(d.imei)}>
-                                            <Text style={[s.filterText, ruleImei === d.imei && { color: C.accent }]}>{d.deviceName}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-
-                                <Text style={{ color: C.textSecondary, marginBottom: 6 }}>Type</Text>
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                                    {(['geofence', 'lowBattery'] as AlertRuleType[]).map(rt => (
-                                        <TouchableOpacity
-                                            key={rt}
-                                            style={[s.filterChip, ruleType === rt && s.filterChipActive]}
-                                            onPress={() => setRuleType(rt)}>
-                                            <Text style={[s.filterText, ruleType === rt && { color: C.accent }]}>{rt}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-
-                                <Text style={{ color: C.textSecondary, marginBottom: 6 }}>Rule Name</Text>
-                                <TextInput
-                                    style={{ backgroundColor: C.bgSecondary, color: C.textPrimary, padding: 12, borderRadius: 8, marginBottom: 16 }}
-                                    placeholder="Enter rule name"
-                                    placeholderTextColor={C.textMuted}
-                                    value={ruleName}
-                                    onChangeText={setRuleName}
-                                />
-
-                                {ruleType === 'geofence' && (
-                                    <>
-                                        <Text style={{ color: C.textSecondary, marginBottom: 6 }}>Geofence Zone</Text>
-                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
-                                            <TouchableOpacity
-                                                style={[s.filterChip, !ruleFenceId && s.filterChipActive]}
-                                                onPress={() => setRuleFenceId('')}>
-                                                <Text style={[s.filterText, !ruleFenceId && { color: C.accent }]}>Any Geofence</Text>
-                                            </TouchableOpacity>
-                                            {combinedGeofences.map(f => (
-                                                <TouchableOpacity
-                                                    key={f.id}
-                                                    style={[s.filterChip, ruleFenceId === f.id && s.filterChipActive]}
-                                                    onPress={() => setRuleFenceId(f.id)}>
-                                                    <Text style={[s.filterText, ruleFenceId === f.id && { color: C.accent }]}>
-                                                        {f.fenceName}{f.isLocal ? ' (Local)' : ''}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </ScrollView>
-                                    </>
-                                )}
-
-                                {ruleType === 'overspeed' && (
-                                    <>
-                                        <Text style={{ color: C.textSecondary, marginBottom: 6 }}>Speed Limit (km/h)</Text>
-                                        <TextInput
-                                            style={{ backgroundColor: C.bgSecondary, color: C.textPrimary, padding: 12, borderRadius: 8, marginBottom: 16 }}
-                                            placeholder="120"
-                                            keyboardType="numeric"
-                                            value={ruleSpeedLimit}
-                                            onChangeText={setRuleSpeedLimit}
-                                        />
-                                    </>
-                                )}
-
-                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-                                    <TouchableOpacity style={{ padding: 12 }} onPress={() => setShowAddRule(false)}>
-                                        <Text style={{ color: C.textSecondary, fontWeight: '600' }}>{t('common.cancel')}</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={{ padding: 12, backgroundColor: C.accent, borderRadius: 8 }} onPress={handleAddRule}>
-                                        <Text style={{ color: C.bgPrimary, fontWeight: '700' }}>{t('common.save')}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </View>
-                    </Modal>
-                </>
-            )}
+            <FlatList
+                data={paged}
+                keyExtractor={a => a.alarmId}
+                renderItem={renderAlarm}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 90 }}
+                onEndReached={() => { if (paged.length < filteredAlarms.length) setPage(p => p + 1); }}
+                onEndReachedThreshold={0.3}
+                ListEmptyComponent={
+                    <Text style={[s.emptyText, { color: C.textMuted }]}>
+                        {loading ? t('alerts.loadingAlarms') : t('alerts.noAlarms')}
+                    </Text>
+                }
+            />
         </View>
     );
 }
@@ -503,28 +348,31 @@ export default function AlertsScreen() {
 const styles = (C: any) => StyleSheet.create({
     container: { flex: 1, backgroundColor: C.bgPrimary },
 
-    tabBar: { flexDirection: 'row', backgroundColor: C.bgSecondary, borderBottomWidth: 1, borderColor: C.border },
-    tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-    tabBtnActive: { borderBottomWidth: 2, borderBottomColor: C.accent },
-    tabBtnText: { fontSize: 11, fontWeight: '700', color: '#94a3b8' },
+    headerBar: {
+        backgroundColor: C.bgSecondary, borderBottomWidth: 1, borderColor: C.border,
+        paddingVertical: 14, paddingHorizontal: 16,
+    },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: C.textPrimary },
 
-    filterBar: { backgroundColor: C.bgSecondary, borderBottomWidth: 1, borderColor: C.border, height: 50 },
+    filterBar: { backgroundColor: C.bgSecondary, borderBottomWidth: 1, borderColor: C.border },
     filterBarContent: {
         flexDirection: 'row',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
         alignItems: 'center',
         gap: 8,
     },
     filterChip: {
-        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+        paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
         backgroundColor: C.bgElevated, borderWidth: 1, borderColor: C.border,
+        flexShrink: 0,
     },
     filterChipActive: { backgroundColor: `${C.accent}15`, borderColor: C.accent },
-    filterText: { fontSize: 12, fontWeight: '600', color: '#94a3b8' },
+    filterText: { fontSize: 13, fontWeight: '600', color: '#94a3b8' },
     refreshChip: {
-        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+        paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
         backgroundColor: C.bgElevated, borderWidth: 1, borderColor: C.border,
+        flexShrink: 0,
     },
 
     errorText: { color: C.danger, fontSize: 12, textAlign: 'center', padding: 6 },

@@ -14,6 +14,7 @@ import { gimiService } from '@/services/gimi';
 import COLORS from '@/constants/Colors';
 import DeviceMap from '@/components/DeviceMap';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatGimiTime, isRecent } from '@/utils/time';
 import { Feather } from '@expo/vector-icons';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
@@ -47,7 +48,11 @@ export default function LiveMapScreen() {
   const { theme, toggleTheme } = useThemeStore();
   const { language, setLanguage } = useLanguageStore();
   const { t, i18n } = useTranslation();
-  const C = COLORS[theme];
+  const insets = useSafeAreaInsets();
+  const tabBarBottom = insets.bottom > 0 ? insets.bottom + 12 : (Platform.OS === 'android' ? 36 : 16);
+  const panelBottom = tabBarBottom + 64 + 8; // tab bar is 64px high + 8px gap
+  const safeDevices = Array.isArray(devices) ? devices : [];
+  const C = COLORS[theme || 'dark'] || COLORS.dark;
 
   const handleLogout = () => {
     Alert.alert(
@@ -76,7 +81,8 @@ export default function LiveMapScreen() {
 
   useEffect(() => {
     // When panel is visible, offset is 0; when hidden, it slides down leaving 52px visible
-    translateY.value = withSpring(panelVisible ? 0 : 288, {
+    // Panel height is 270, so 270 - 52 = 218 slides it down to show only the handle
+    translateY.value = withSpring(panelVisible ? 0 : 218, {
       damping: 18,
       stiffness: 100,
     });
@@ -108,7 +114,12 @@ export default function LiveMapScreen() {
       await gimiService.sendDeviceCommand(accessToken, device.imei, 'FIND,3000#');
       Alert.alert(t('map.ringTag'), t('map.ringSuccess', { name: device.deviceName || device.imei }));
     } catch (err: any) {
-      Alert.alert(t('common.error'), err?.message || t('map.ringFail'));
+      const errMsg = err?.message || '';
+      if (errMsg.includes('243')) {
+        Alert.alert(t('map.ringTag'), t('errors.unsupportedCommand'));
+      } else {
+        Alert.alert(t('common.error'), errMsg || t('map.ringFail'));
+      }
     } finally {
       setRingingImei(null);
     }
@@ -136,17 +147,19 @@ export default function LiveMapScreen() {
   }, [i18n]);
 
   // ── Filter devices
-  const filtered = devices.filter((d) =>
-    d.deviceName.toLowerCase().includes(search.toLowerCase()) ||
-    d.imei.includes(search)
+  const filtered = safeDevices.filter((d) =>
+    (d.deviceName || '').toLowerCase().includes(search.toLowerCase()) ||
+    (d.imei || '').includes(search)
   );
 
   // Build sections for SectionList
   const sectionsMap: Record<string, Device[]> = { default: [] };
-  groups.forEach(g => { sectionsMap[g.id] = []; });
+  const safeGroups = Array.isArray(groups) ? groups : [];
+  safeGroups.forEach(g => { sectionsMap[g.id] = []; });
 
+  const safeDeviceGroupMap = deviceGroupMap || {};
   filtered.forEach(d => {
-    const groupId = deviceGroupMap[d.imei];
+    const groupId = safeDeviceGroupMap[d.imei];
     if (groupId && sectionsMap[groupId]) {
       sectionsMap[groupId].push(d);
     } else {
@@ -156,10 +169,10 @@ export default function LiveMapScreen() {
 
   const sections = [
     { id: 'default', title: 'Default group', data: sectionsMap.default },
-    ...groups.map(g => ({ id: g.id, title: g.name, data: sectionsMap[g.id] }))
+    ...safeGroups.map(g => ({ id: g.id, title: g.name, data: sectionsMap[g.id] }))
   ].filter(s => s.data.length > 0 || s.id !== 'default'); // Keep custom empty groups but hide empty default
 
-  const onlineCount = devices.filter((d) => d.status === '1' || d.posType === 'GPS' || isRecent(d.gpsTime || d.sysTime)).length;
+  const onlineCount = safeDevices.filter((d) => d.status === '1' || d.posType === 'GPS' || isRecent(d.gpsTime || d.sysTime)).length;
 
   const handleCreateGroup = () => {
     if (!newGroupName.trim()) return;
@@ -237,13 +250,13 @@ export default function LiveMapScreen() {
     <View style={s.container}>
       {/* ── Map ── */}
       <DeviceMap
-        devices={devices}
+        devices={safeDevices}
         selectedImei={selectedDevice?.imei ?? null}
         onMarkerTap={(imei) => {
-          const dev = devices.find((d) => d.imei === imei);
+          const dev = safeDevices.find((d) => d.imei === imei);
           selectDevice(dev ?? null);
         }}
-        theme={theme}
+        theme={theme || 'dark'}
         style={s.map}
       />
 
@@ -258,7 +271,7 @@ export default function LiveMapScreen() {
             <View style={[s.dotSmall, { backgroundColor: C.offline }]} />
             <Text style={s.statText}>{devices.length - onlineCount} {t('dashboard.offline') || 'Offline'}</Text>
           </View>
-          {loading && <ActivityIndicator size="small" color={C.accent} style={{ marginLeft: 8 }} />}
+          {loading && <ActivityIndicator size="small" color={C.accent} style={{ marginStart: 8 }} />}
         </View>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -280,12 +293,12 @@ export default function LiveMapScreen() {
       </View>
 
       {/* ── Device panel (spring bottom sheet style) ── */}
-      <Animated.View style={[s.panel, animatedPanelStyle]}>
+      <Animated.View style={[s.panel, animatedPanelStyle, { bottom: panelBottom }]}>
         {/* Drag / Pull Handle Area */}
         <Pressable style={s.panelHandle} onPress={() => setPanelVisible((v) => !v)}>
           <View style={s.handleBar} />
           <Text style={s.panelToggleText}>
-            {panelVisible ? '▼ ' + (t('map.hideDevices') || 'Hide Devices') : '▲ ' + (t('map.showDevices') || 'Show Devices')}
+            {panelVisible ? '▼ ' + t('map.hideDevices', 'Hide Device List') : '▲ ' + t('map.showDevices', 'Show Device List')}
           </Text>
         </Pressable>
 
@@ -317,42 +330,48 @@ export default function LiveMapScreen() {
               <View style={s.selectedCardInner}>
                 <Text style={s.selectedName}>{selectedDevice.deviceName}</Text>
                 <Text style={s.selectedMeta}><Feather name="radio" size={12} color={C.textSecondary} /> {selectedDevice.imei}</Text>
-                <Text style={s.selectedMeta}><Feather name="navigation" size={12} color={C.textSecondary} /> {selectedDevice.speed ?? 0} km/h</Text>
                 {selectedDevice.lat && (
                   <Text style={s.selectedMeta}>
                     <Feather name="map-pin" size={12} color={C.textSecondary} /> {selectedDevice.lat?.toFixed(5)}, {selectedDevice.lng?.toFixed(5)}
                   </Text>
                 )}
                 {selectedDevice.batteryPowerVal && (
-                  <Text style={s.selectedMeta}><Feather name="battery" size={12} color={C.textSecondary} /> {selectedDevice.batteryPowerVal}%</Text>
+                  <Text style={s.selectedMeta}><Feather name="battery" size={12} color={C.textSecondary} /> {selectedDevice.batteryPowerVal === 'N/A' ? 'N/A' : `${selectedDevice.batteryPowerVal}%`}</Text>
                 )}
                 <Text style={s.selectedMeta}><Feather name="clock" size={12} color={C.textSecondary} /> {formatGimiTime(selectedDevice.sysTime || selectedDevice.gpsTime)}</Text>
                 
                 <TouchableOpacity
                   style={{
-                    backgroundColor: `${C.accent}20`,
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 8,
+                    backgroundColor: ringingImei === selectedDevice.imei ? `${C.accent}10` : `${C.accent}20`,
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 10,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 4,
-                    marginLeft: 4
+                    gap: 6,
+                    marginStart: 8,
+                    borderWidth: 1,
+                    borderColor: `${C.accent}40`
                   }}
                   onPress={() => handleRingTag(selectedDevice)}
                   disabled={ringingImei === selectedDevice.imei}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                 >
                   {ringingImei === selectedDevice.imei ? (
-                    <ActivityIndicator size="small" color={C.accent} style={{ transform: [{ scale: 0.8 }] }} />
+                    <ActivityIndicator size="small" color={C.accent} />
                   ) : (
-                    <Feather name="bell" size={12} color={C.accent} />
+                    <Feather name="bell" size={13} color={C.accent} />
                   )}
-                  <Text style={{ color: C.accent, fontSize: 12, fontWeight: '700' }}>
+                  <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>
                     {t('map.ringTag')}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={s.clearBtn} onPress={() => selectDevice(null)}>
+                <TouchableOpacity 
+                  style={[s.clearBtn, { width: 32, height: 32, borderRadius: 16, marginStart: 8 }]} 
+                  onPress={() => selectDevice(null)}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                >
                   <Text style={s.clearBtnText}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -370,7 +389,7 @@ export default function LiveMapScreen() {
           }}
           renderSectionHeader={renderSectionHeader}
           style={s.list}
-          contentContainerStyle={{ paddingBottom: 110 }}
+          contentContainerStyle={{ paddingBottom: 16 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <Text style={[s.emptyText, { color: C.textMuted }]}>
@@ -464,11 +483,12 @@ const styles = (C: any, theme: string) => StyleSheet.create({
   themeBtnText: { fontSize: 18 },
 
   panel: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
+    position: 'absolute', bottom: 88, left: 0, right: 0,
     backgroundColor: C.bgCard,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
     borderTopWidth: 1, borderColor: C.border,
-    height: 340,
+    height: 270,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: theme === 'dark' ? 0.35 : 0.12,
@@ -536,7 +556,7 @@ const styles = (C: any, theme: string) => StyleSheet.create({
   selectedName: { fontSize: 13, fontWeight: '800', color: C.textPrimary },
   selectedMeta: { fontSize: 12, color: C.textSecondary },
   clearBtn: {
-    marginLeft: 8, width: 24, height: 24, borderRadius: 12,
+    marginStart: 8, width: 24, height: 24, borderRadius: 12,
     backgroundColor: 'rgba(239,68,68,0.15)', alignItems: 'center', justifyContent: 'center',
   },
   clearBtnText: { color: C.danger, fontSize: 13, fontWeight: '700' },
@@ -550,7 +570,7 @@ const styles = (C: any, theme: string) => StyleSheet.create({
   },
   sectionHeaderText: { fontSize: 13, fontWeight: '700', color: C.textPrimary },
   deleteGroupText: { fontSize: 14, color: C.textMuted, paddingHorizontal: 8 },
-  optionsBtn: { padding: 8, marginRight: 4, alignItems: 'center', justifyContent: 'center' },
+  optionsBtn: { padding: 8, marginEnd: 4, alignItems: 'center', justifyContent: 'center' },
   optionsBtnText: { fontSize: 18, fontWeight: '600', color: C.textMuted },
 
   // Modal Styles

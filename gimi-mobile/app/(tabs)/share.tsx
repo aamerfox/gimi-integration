@@ -293,7 +293,7 @@ const styles = (C: any) => StyleSheet.create({
 
     durationRow: { flexDirection: 'row', marginBottom: 2 },
     durationBtn: {
-        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginRight: 8,
+        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginEnd: 8,
         backgroundColor: C.bgElevated, borderWidth: 1, borderColor: C.border,
     },
     durationBtnActive: { backgroundColor: `${C.accent}15`, borderColor: C.accent },

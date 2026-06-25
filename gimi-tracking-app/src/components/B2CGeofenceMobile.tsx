@@ -28,8 +28,11 @@ export default function B2CGeofenceMobile() {
             center: [lat, lng],
             zoom: 15,
             zoomControl: false,
+            attributionControl: false,
             layers: [streetLayer]
         });
+
+        L.control.attribution({ prefix: false }).addTo(map);
 
         mapRef.current = map;
         setTimeout(() => { map.invalidateSize(); }, 150);

@@ -3,6 +3,8 @@ import { useAuthStore } from '../store/auth';
 import { useDeviceStore } from '../store/devices';
 import type { Device } from '../store/devices';
 import { gimiService } from '../services/gimi';
+import { customApi } from '../services/api';
+import { useSimulationStore } from '../store/simulation';
 
 interface ApiResponse<T = unknown> {
     code: number;
@@ -47,8 +49,24 @@ export function useLocationPolling(intervalMs = 15000) {
 
     useEffect(() => {
         if (!accessToken) return;
-        // Initial load
-        fetchDevices().then(fetchLocations);
+
+        // Sync custom sub-accounts from SQLite backend on mount/load
+        const syncCustomAccounts = async () => {
+            try {
+                const allRes = await customApi.get('/sub-accounts');
+                if (allRes?.data?.code === 0 && Array.isArray(allRes.data.result)) {
+                    useSimulationStore.setState({ simulatedChildAccounts: allRes.data.result });
+                }
+            } catch (e) {
+                console.error('Failed to sync custom sub-accounts on polling start:', e);
+            }
+        };
+
+        // Initialize sync, then load devices and locations
+        syncCustomAccounts().then(() => {
+            fetchDevices().then(fetchLocations);
+        });
+
         // Poll locations every intervalMs
         const interval = setInterval(fetchLocations, intervalMs);
         return () => clearInterval(interval);

@@ -1,5 +1,5 @@
 $ErrorActionPreference = "SilentlyContinue"
-$src = "c:\Users\aamer\Desktop\SaudiEx project agents\gimi integrartion\gimi-mobile"
+$src = "c:\Users\aamer\Desktop\SaudiEx project agents\traceplus oci\gimi-mobile"
 $dst = "C:\gimi-mobile"
 
 Write-Host "Creating target directory $dst..."

@@ -114,7 +114,7 @@ export default function Devices() {
                                     </div>
                                     <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300">
                                         {getBatteryIcon(batteryPower)}
-                                        <span>%{device.batteryPowerVal || '--'}</span>
+                                        <span>{device.batteryPowerVal === 'N/A' ? 'N/A' : `%${device.batteryPowerVal || '--'}`}</span>
                                     </div>
                                 </div>
                             </div>

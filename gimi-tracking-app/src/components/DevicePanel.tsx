@@ -460,7 +460,7 @@ function DeviceItem({ device, isSelected, onSelect, menuOpen, onMenuToggle, grou
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                         <span style={{ fontSize: '11px', background: isOnline ? 'var(--online)' : 'var(--offline)', color: '#fff', padding: '2px 6px', borderRadius: '12px' }}>
-                            {batteryVal}%
+                            {device.batteryPowerVal === 'N/A' ? 'N/A' : `${batteryVal}%`}
                         </span>
                         <span style={{ color: 'var(--offline)', fontSize: '12px' }}>♥</span>
                     </div>

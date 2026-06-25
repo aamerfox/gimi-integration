@@ -15,31 +15,38 @@ import { View, Text, StyleSheet, ActivityIndicator, Platform, TouchableOpacity, 
 import { validateShareUrl } from '@/services/share';
 import { api } from '@/services/api';
 import { formatGimiTime } from '@/utils/time';
+import { useTranslation } from 'react-i18next';
+import { useLanguageStore } from '@/store/language';
 
 
 function buildViewerMapHtml(
     lat: number, lng: number, deviceName: string,
-    speed: number, gpsTime: string, isOnline: boolean
+    speed: number, gpsTime: string, isOnline: boolean,
+    direction: 'ltr' | 'rtl'
 ): string {
     const accent = '#0891b2';
+    const isRtl = direction === 'rtl';
+    const labelOnline = isRtl ? 'متصل' : 'Online';
+    const labelOffline = isRtl ? 'غير متصل' : 'Offline';
+    const labelKmh = isRtl ? 'كم/س' : 'km/h';
     return `<!DOCTYPE html>
-<html>
+<html dir="${direction}">
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 html,body,#map{margin:0;padding:0;height:100%;width:100%;background:#0a0e1a;}
 .leaflet-control-zoom a{background:#111827!important;color:#94a3b8!important;}
-.leaflet-popup-content-wrapper{background:#1a2035;color:#f1f5f9;border-radius:12px;border:1px solid rgba(255,255,255,0.1);}
+.leaflet-popup-content-wrapper{background:#1a2035;color:#f1f5f9;border-radius:12px;border:1px solid rgba(255,255,255,0.1); text-align: ${isRtl ? 'right' : 'left'};}
 .leaflet-popup-tip{background:#1a2035;}
 </style>
 </head>
 <body>
 <div id="map"></div>
 <script>
-var map=L.map('map',{center:[${lat},${lng}],zoom:15,zoomControl:true});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18}).addTo(map);
+var map=L.map('map',{center:[${lat},${lng}],zoom:15,zoomControl:true,attributionControl:false});
+L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{attribution:'© Google Maps',maxZoom:18}).addTo(map);
 // Pulse circle
 L.circle([${lat},${lng}],{
   radius:80,color:'${accent}',fillColor:'${accent}',fillOpacity:0.12,weight:2
@@ -50,7 +57,7 @@ var icon=L.divIcon({
   iconSize:[20,20],iconAnchor:[10,10],className:''
 });
 L.marker([${lat},${lng}],{icon:icon}).addTo(map)
-  .bindPopup('<b>${deviceName.replace(/'/g, "\\'")}</b><br>${isOnline ? '🟢 Online' : '⚫ Offline'}<br>🚀 ${speed} km/h<br>🕐 ${gpsTime}')
+  .bindPopup('<b>${deviceName.replace(/'/g, "\\'")}</b><br>${isOnline ? '🟢 ' + labelOnline : '⚫ ' + labelOffline}<br>🚀 ${speed} ${labelKmh}<br>🕐 ${gpsTime}')
   .openPopup();
 </script>
 </body>
@@ -58,6 +65,7 @@ L.marker([${lat},${lng}],{icon:icon}).addTo(map)
 }
 
 export default function ShareViewerPage() {
+    const { t } = useTranslation();
     const [state, setState] = useState<'loading' | 'invalid' | 'expired' | 'valid'>('loading');
     const [deviceName, setDeviceName] = useState('');
     const [expiresAt, setExpiresAt] = useState(0);
@@ -89,7 +97,10 @@ export default function ShareViewerPage() {
                 Alert.alert('Success', `Sent ring command to ${deviceName}`);
             }
         } catch (err: any) {
-            const errorMsg = err?.message || 'Failed to send ring command';
+            let errorMsg = err?.message || 'Failed to send ring command';
+            if (errorMsg.includes('243')) {
+                errorMsg = 'This device type does not support remote ring commands.';
+            }
             if (Platform.OS === 'web') {
                 alert(errorMsg);
             } else {
@@ -120,7 +131,8 @@ export default function ShareViewerPage() {
                 };
                 setLocationData(data);
                 setLastRefresh(new Date().toLocaleTimeString());
-                setMapHtml(buildViewerMapHtml(data.lat, data.lng, deviceName, data.speed, data.gpsTime, data.isOnline));
+                const { direction } = useLanguageStore.getState();
+                setMapHtml(buildViewerMapHtml(data.lat, data.lng, deviceName, data.speed, data.gpsTime, data.isOnline, direction));
             }
         } catch { /* silent — link might have expired */ }
     }, [deviceName]);
@@ -165,7 +177,7 @@ export default function ShareViewerPage() {
         return (
             <View style={v.center}>
                 <ActivityIndicator size="large" color="#0891b2" />
-                <Text style={v.hint}>Validating share link...</Text>
+                <Text style={v.hint}>{t('common.loading')}</Text>
             </View>
         );
     }
@@ -174,8 +186,8 @@ export default function ShareViewerPage() {
         return (
             <View style={v.center}>
                 <Text style={{ fontSize: 64, marginBottom: 16 }}>⏰</Text>
-                <Text style={v.errorTitle}>Link Expired</Text>
-                <Text style={v.errorSub}>This share link has expired. Ask the owner to generate a new one.</Text>
+                <Text style={v.errorTitle}>{t('share.linkExpired')}</Text>
+                <Text style={v.errorSub}>{t('share.linkExpiredDesc')}</Text>
             </View>
         );
     }
@@ -184,8 +196,8 @@ export default function ShareViewerPage() {
         return (
             <View style={v.center}>
                 <Text style={{ fontSize: 64, marginBottom: 16 }}>🔒</Text>
-                <Text style={v.errorTitle}>Invalid Link</Text>
-                <Text style={v.errorSub}>This link is invalid or has been tampered with.</Text>
+                <Text style={v.errorTitle}>{t('share.linkInvalid')}</Text>
+                <Text style={v.errorSub}>{t('share.linkInvalidDesc')}</Text>
             </View>
         );
     }
@@ -223,7 +235,7 @@ export default function ShareViewerPage() {
                 {!locationData ? (
                     <View style={v.center}>
                         <ActivityIndicator size="large" color="#0891b2" />
-                        <Text style={[v.hint, { marginTop: 12 }]}>Fetching location...</Text>
+                        <Text style={[v.hint, { marginTop: 12 }]}>{t('common.loading')}</Text>
                     </View>
                 ) : Platform.OS === 'web' && mapHtml ? (
                     <div style={{ width: '100%', height: '100%' }}>
@@ -241,25 +253,25 @@ export default function ShareViewerPage() {
             {/* Stats bar */}
             <View style={v.statsBar}>
                 <View style={v.statItem}>
-                    <Text style={v.statLabel}>STATUS</Text>
+                    <Text style={v.statLabel}>{t('common.status')?.toUpperCase()}</Text>
                     <Text style={[v.statValue, { color: locationData?.isOnline ? '#0891b2' : '#6b7280' }]}>
-                        {locationData?.isOnline ? '🟢 Online' : '⚫ Offline'}
+                        {locationData?.isOnline ? `🟢 ${t('dashboard.online')}` : `⚫ ${t('dashboard.offline')}`}
                     </Text>
                 </View>
                 <View style={v.statDivider} />
                 <View style={v.statItem}>
-                    <Text style={v.statLabel}>SPEED</Text>
-                    <Text style={v.statValue}>{locationData?.speed ?? 0} km/h</Text>
+                    <Text style={v.statLabel}>{t('common.speed')?.toUpperCase()}</Text>
+                    <Text style={v.statValue}>{locationData?.speed ?? 0} {t('common.kmh')}</Text>
                 </View>
                 <View style={v.statDivider} />
                 <View style={v.statItem}>
-                    <Text style={v.statLabel}>UPDATED</Text>
+                    <Text style={v.statLabel}>{t('common.updated')?.toUpperCase()}</Text>
                     <Text style={v.statValue}>{lastRefresh || '—'}</Text>
                 </View>
             </View>
 
             <Text style={v.footerNote}>
-                🔒 Secured by HMAC-SHA256 · Auto-refreshes every 30s · {timeLeft()}
+                🔒 {t('share.securedBy')} · {t('share.autoRefreshes')} · {timeLeft()}
             </Text>
         </View>
     );

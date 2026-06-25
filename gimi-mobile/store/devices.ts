@@ -42,18 +42,29 @@ export const useDeviceStore = create<DeviceState>()((set, get) => ({
 
     updateDeviceLocations: (locations) => {
         const { devices } = get();
-        const updated = devices.map((dev) => {
-            const loc = locations.find((l) => l.imei === dev.imei);
-            if (loc) {
-                return {
-                    ...dev,
+        const updated = [...devices];
+
+        locations.forEach((loc) => {
+            if (!loc.imei) return;
+            const idx = updated.findIndex((d) => d.imei === loc.imei);
+            if (idx > -1) {
+                updated[idx] = {
+                    ...updated[idx],
                     ...loc,
-                    deviceName: dev.deviceName, // Prevent location payload from overwriting actual name
-                    icon: dev.icon
+                    deviceName: updated[idx].deviceName || loc.deviceName || `Device ${loc.imei}`,
+                    icon: updated[idx].icon || loc.icon || 'automobile',
                 };
+            } else {
+                updated.push({
+                    imei: loc.imei,
+                    deviceName: loc.deviceName || `Device ${loc.imei}`,
+                    icon: loc.icon || 'automobile',
+                    status: loc.status || '0',
+                    ...loc,
+                } as Device);
             }
-            return dev;
         });
+
         set({ devices: updated });
 
         const { selectedDevice } = get();

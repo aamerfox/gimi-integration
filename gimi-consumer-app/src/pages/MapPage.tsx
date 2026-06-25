@@ -68,6 +68,7 @@ export default function MapPage() {
           style={{ height: '100%', width: '100%' }}
           ref={mapRef}
           zoomControl={false}
+          attributionControl={false}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {validDevices.map(device => {

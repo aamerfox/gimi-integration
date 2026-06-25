@@ -83,9 +83,11 @@ const LiveMap = forwardRef<LiveMapHandle>(function LiveMap(_props, ref) {
             center: [24.7136, 46.6753], // Riyadh
             zoom: 6,
             zoomControl: false,  // We render our own zoom buttons in Dashboard
-            attributionControl: true,
+            attributionControl: false,
             layers: [streetLayer] // Default to street
         });
+
+        L.control.attribution({ prefix: false }).addTo(map);
 
         const isRtl = document.documentElement.dir === 'rtl';
         L.control.layers(baseMaps, undefined, { position: isRtl ? 'bottomleft' : 'bottomright' }).addTo(map);

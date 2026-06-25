@@ -208,26 +208,65 @@ export default function Alerts() {
                 }
             }
 
-            const parsed: Alarm[] = allAlarms.map((a: RawAlarm) => {
-                let type = a.alertTypeId || a.alarmType || a.alertType || a.type || '';
-                // map TSP specific type IDs
-                if (type === 'in') type = 'geofenceIn';
-                if (type === 'out') type = 'geofenceOut';
+            // Also merge local geofence events for OCI devices
+            const startMs = new Date(startDate).getTime();
+            const endMs = new Date(endDate).getTime();
+            const allowedImeis = devices.map((d: Device) => d.imei).filter(Boolean);
+            
+            const localAlarms: Alarm[] = geofenceEvents
+                .filter((evt) => {
+                    const evtImei = evt.imei || '';
+                    const isTargetDevice = selectedImei ? evtImei === selectedImei : allowedImeis.includes(evtImei);
+                    if (!isTargetDevice) return false;
+                    
+                    const evtMs = new Date(evt.timestamp).getTime();
+                    return evtMs >= startMs && evtMs <= endMs;
+                })
+                .map((evt) => {
+                    const isEntered = evt.eventType === 'entered';
+                    const alarmType = isEntered ? 'geofenceIn' : 'geofenceOut';
+                    const alarmDesc = isEntered 
+                        ? `Enter geo-fence(${evt.fenceName})` 
+                        : `Exit geo-fence(${evt.fenceName})`;
+                        
+                    const gpsTime = evt.timestamp.replace('T', ' ').split('.')[0];
+                    
+                    return {
+                        alarmId: evt.id,
+                        imei: evt.imei,
+                        alarmType,
+                        alarmDesc,
+                        lat: evt.lat,
+                        lng: evt.lng,
+                        speed: 0,
+                        gpsTime,
+                        deviceName: evt.deviceName || devices.find((d: Device) => d.imei === evt.imei)?.deviceName || evt.imei,
+                    };
+                });
 
-                const desc = a.alarmTypeName || a.alarmDesc || a.alarmName || a.desc || type || '';
+            const parsed: Alarm[] = [
+                ...allAlarms.map((a: RawAlarm) => {
+                    let type = a.alertTypeId || a.alarmType || a.alertType || a.type || '';
+                    // map TSP specific type IDs
+                    if (type === 'in') type = 'geofenceIn';
+                    if (type === 'out') type = 'geofenceOut';
 
-                return {
-                    alarmId: a.alarmId || a.id || `${a.imei}-${a.gpsTime || a.alertTime}-${Math.random()}`,
-                    imei: a.imei || '',
-                    alarmType: type,
-                    alarmDesc: desc,
-                    lat: Number(a.lat) || 0,
-                    lng: Number(a.lng) || 0,
-                    speed: Number(a.speed) || 0,
-                    gpsTime: a.gpsTime || a.alertTime || a.time || '',
-                    deviceName: a.deviceName || devices.find((d: Device) => d.imei === a.imei)?.deviceName || a.imei,
-                };
-            });
+                    const desc = a.alarmTypeName || a.alarmDesc || a.alarmName || a.desc || type || '';
+
+                    return {
+                        alarmId: a.alarmId || a.id || `${a.imei}-${a.gpsTime || a.alertTime}-${Math.random()}`,
+                        imei: a.imei || '',
+                        alarmType: type,
+                        alarmDesc: desc,
+                        lat: Number(a.lat) || 0,
+                        lng: Number(a.lng) || 0,
+                        speed: Number(a.speed) || 0,
+                        gpsTime: a.gpsTime || a.alertTime || a.time || '',
+                        deviceName: a.deviceName || devices.find((d: Device) => d.imei === a.imei)?.deviceName || a.imei,
+                    };
+                }),
+                ...localAlarms
+            ];
             // Sort by time descending
             parsed.sort((a, b) => b.gpsTime.localeCompare(a.gpsTime));
             setAlarms(parsed);
@@ -237,7 +276,8 @@ export default function Alerts() {
         } finally {
             setIsLoading(false);
         }
-    }, [accessToken, userId, selectedImei, startDate, endDate, devices]);
+    }, [accessToken, userId, selectedImei, startDate, endDate, devices, geofenceEvents]);
+
 
     useEffect(() => { fetchAlarms(); }, [fetchAlarms]);
 
@@ -252,6 +292,11 @@ export default function Alerts() {
         if (activeFilter === 'offline') return type.includes('offline') || type.includes('disconnect');
         return true;
     });
+
+    const allowedImeis = devices.map((d: Device) => d.imei).filter(Boolean);
+    const displayedRules = rules.filter(r => r.imei === '' || allowedImeis.includes(r.imei));
+    const filteredGeofenceEvents = geofenceEvents.filter(evt => allowedImeis.includes(evt.imei));
+
 
     const severityColor = (s: string) => {
         if (s === 'critical') return 'var(--danger)';
@@ -386,7 +431,7 @@ export default function Alerts() {
                     <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         ⚙️ Alert Rules
                         <span style={{ background: 'var(--border)', color: 'var(--text-muted)', borderRadius: '999px', padding: '1px 7px', fontSize: '10px', fontWeight: 600 }}>
-                            {rules.length}
+                            {displayedRules.length}
                         </span>
                     </span>
                     <button onClick={() => setShowAddRule(true)} className="sx-btn sx-btn-primary sx-btn-sm" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -395,12 +440,12 @@ export default function Alerts() {
                     </button>
                 </div>
 
-                {rules.length === 0 ? (
+                {displayedRules.length === 0 ? (
                     <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
                         No alert rules yet — click <strong>Add Alert</strong> to create one
                     </div>
                 ) : (
-                    rules.map(rule => (
+                    displayedRules.map(rule => (
                         <div key={rule.id} style={{
                             display: 'grid', gridTemplateColumns: '28px 1fr auto auto',
                             alignItems: 'center', gap: '10px',
@@ -411,10 +456,10 @@ export default function Alerts() {
                             <div>
                                 <div style={{ fontSize: '13px', fontWeight: 500 }}>{rule.name}</div>
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                    {RULE_LABELS[rule.type]}
-                                    {rule.fenceName && ` · ${rule.fenceName}`}
-                                    {rule.speedLimit && ` · >${rule.speedLimit} km/h`}
-                                    {' · '}{rule.deviceName || 'All Devices'}
+                                     {RULE_LABELS[rule.type]}
+                                     {rule.fenceName && ` · ${rule.fenceName}`}
+                                     {rule.speedLimit && ` · >${rule.speedLimit} km/h`}
+                                     {' · '}{rule.deviceName || 'All Devices'}
                                 </div>
                             </div>
                             {/* Toggle */}
@@ -444,7 +489,7 @@ export default function Alerts() {
             </div>
 
             {/* ── Live Geofence Events ── */}
-            {geofenceEvents.length > 0 && (
+            {filteredGeofenceEvents.length > 0 && (
                 <div className="glass-panel-flat" style={{ marginBottom: '16px', overflow: 'hidden' }}>
                     <div style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -462,7 +507,7 @@ export default function Alerts() {
                                 padding: '1px 7px',
                                 fontSize: '10px',
                                 fontWeight: 700,
-                            }}>{geofenceEvents.length}</span>
+                            }}>{filteredGeofenceEvents.length}</span>
                         </span>
                         <button
                             onClick={clearEvents}
@@ -474,9 +519,10 @@ export default function Alerts() {
                     </div>
 
                     <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-                        {geofenceEvents.map((evt: GeofenceEvent) => {
+                        {filteredGeofenceEvents.map((evt: GeofenceEvent) => {
                             const isEntered = evt.eventType === 'entered';
                             const color = isEntered ? 'var(--accent)' : 'var(--warn)';
+
                             return (
                                 <div key={evt.id} style={{
                                     display: 'grid',

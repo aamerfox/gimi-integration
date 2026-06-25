@@ -9,6 +9,8 @@ import { useAuthStore } from '@/store/auth';
 import { useDeviceStore, Device } from '@/store/devices';
 import { useThemeStore } from '@/store/theme';
 import { useTranslation } from 'react-i18next';
+import { useIsFocused } from '@react-navigation/native';
+import { useLanguageStore } from '@/store/language';
 import { gimiService } from '@/services/gimi';
 import COLORS from '@/constants/Colors';
 import { Feather } from '@expo/vector-icons';
@@ -125,10 +127,20 @@ function detectStops(points: TrackPoint[], thresholdMinutes = 3): StopPoint[] {
     return stops;
 }
 
-function buildTrackHtml(points: TrackPoint[], theme: 'dark' | 'light', playIdx: number, stops: StopPoint[]): string {
+function buildTrackHtml(points: TrackPoint[], theme: 'dark' | 'light', playIdx: number, stops: StopPoint[], direction: 'ltr' | 'rtl'): string {
     const bg = theme === 'dark' ? '#0a0e1a' : '#f0f4f8';
     const accent = theme === 'dark' ? '#0891b2' : '#1e3a8a';
     const lineColor = accent;
+
+    const isRtl = direction === 'rtl';
+    const labelStart = isRtl ? 'البداية' : 'Start';
+    const labelEnd = isRtl ? 'النهاية' : 'End';
+    const labelStop = isRtl ? 'توقف رقم' : 'Stop #';
+    const labelDuration = isRtl ? 'المدة:' : 'Duration:';
+    const labelMins = isRtl ? 'دقائق' : 'mins';
+    const labelTime = isRtl ? 'الوقت:' : 'Time:';
+    const labelTo = isRtl ? 'إلى' : 'to';
+    const labelKmh = isRtl ? 'كم/س' : 'km/h';
 
     const pointsJson = JSON.stringify(points.map(p => ({ lat: p.lat, lng: p.lng, speed: p.speed, t: formatGimiTime(p.gpsTime) })));
     const stopsJson = JSON.stringify(stops.map((s, idx) => ({
@@ -141,14 +153,14 @@ function buildTrackHtml(points: TrackPoint[], theme: 'dark' | 'light', playIdx: 
     })));
 
     return `<!DOCTYPE html>
-<html>
+<html dir="${direction}">
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   html,body,#map{margin:0;padding:0;height:100%;width:100%;background:${bg};}
-  .leaflet-popup-content-wrapper{background:${theme === 'dark' ? '#1a2035' : '#fff'};color:${theme === 'dark' ? '#f1f5f9' : '#0f172a'};border-radius:12px;border:1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'};}
+  .leaflet-popup-content-wrapper{background:${theme === 'dark' ? '#1a2035' : '#fff'};color:${theme === 'dark' ? '#f1f5f9' : '#0f172a'};border-radius:12px;border:1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}; text-align: ${isRtl ? 'right' : 'left'};}
   .leaflet-popup-tip{background:${theme === 'dark' ? '#1a2035' : '#fff'};}
   .leaflet-control-zoom a{background:${theme === 'dark' ? '#111827' : '#fff'} !important;color:${theme === 'dark' ? '#94a3b8' : '#475569'} !important;}
   .stop-marker{width:22px;height:22px;border-radius:50%;background:#f59e0b;border:3px solid #fff;box-shadow:0 0 12px rgba(245,158,11,0.6);display:flex;align-items:center;justify-content:center;color:#fff;font-family:system-ui,-apple-system,sans-serif;font-size:10px;font-weight:bold;cursor:pointer;}
@@ -162,8 +174,8 @@ var playIdx = ${playIdx};
 var map;
 if (pts && pts.length > 0) {
   var activeIdx = Math.max(0, Math.min(playIdx, pts.length - 1));
-  map = L.map('map',{center:[pts[0].lat,pts[0].lng],zoom:14,zoomControl:true});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18}).addTo(map);
+  map = L.map('map',{center:[pts[0].lat,pts[0].lng],zoom:14,zoomControl:true,attributionControl:false});
+  L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{attribution:'© Google Maps',maxZoom:18}).addTo(map);
 
   // Track polyline
   var line = L.polyline(pts.map(function(p){return [p.lat,p.lng];}), {
@@ -174,13 +186,13 @@ if (pts && pts.length > 0) {
   // Start marker
   L.circleMarker([pts[0].lat,pts[0].lng],{
     radius:7,fillColor:'#22c55e',fillOpacity:1,color:'#fff',weight:2
-  }).addTo(map).bindPopup('<b>Start</b><br>'+pts[0].t);
+  }).addTo(map).bindPopup('<b>' + labelStart + '</b><br>'+pts[0].t);
 
   // End marker
   var last = pts[pts.length-1];
   L.circleMarker([last.lat,last.lng],{
     radius:7,fillColor:'#ef4444',fillOpacity:1,color:'#fff',weight:2
-  }).addTo(map).bindPopup('<b>End</b><br>'+last.t);
+  }).addTo(map).bindPopup('<b>' + labelEnd + '</b><br>'+last.t);
 
   // Draw stop markers
   var stops = ${stopsJson};
@@ -193,9 +205,9 @@ if (pts && pts.length > 0) {
     });
     L.marker([s.lat, s.lng], {icon: icon})
       .addTo(map)
-      .bindPopup('<b>Stop #' + s.idx + '</b><br>' +
-                 '<b>Duration:</b> ' + s.duration + ' mins<br>' +
-                 '<b>Time:</b> ' + s.startT + '<br>to ' + s.endT);
+      .bindPopup('<b>' + labelStop + ' ' + s.idx + '</b><br>' +
+                 '<b>' + labelDuration + '</b> ' + s.duration + ' ' + labelMins + '<br>' +
+                 '<b>' + labelTime + '</b> ' + s.startT + '<br>' + labelTo + ' ' + s.endT);
   });
 
   // Playback dot
@@ -203,7 +215,7 @@ if (pts && pts.length > 0) {
     var playDot = L.circleMarker([pts[activeIdx].lat,pts[activeIdx].lng],{
       radius:10,fillColor:'${accent}',fillOpacity:1,color:'#fff',weight:3
     }).addTo(map);
-    playDot.bindPopup('<b>'+pts[activeIdx].speed+' km/h</b><br>'+pts[activeIdx].t);
+    playDot.bindPopup('<b>'+pts[activeIdx].speed+' ' + labelKmh + '</b><br>'+pts[activeIdx].t);
 
     // Listen for playback index updates from React
     window.addEventListener('message',function(e){
@@ -217,8 +229,8 @@ if (pts && pts.length > 0) {
     });
   }
 } else {
-  map = L.map('map',{center:[24.7136,46.6753],zoom:6,zoomControl:true});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18}).addTo(map);
+  map = L.map('map',{center:[24.7136,46.6753],zoom:6,zoomControl:true,attributionControl:false});
+  L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{attribution:'© Google Maps',maxZoom:18}).addTo(map);
 }
 </script>
 </body>
@@ -305,11 +317,15 @@ function defaultDates(): { start: string; end: string } {
 }
 
 export default function HistoryScreen() {
+    const isFocused = useIsFocused();
     const { accessToken } = useAuthStore();
     const { devices } = useDeviceStore();
     const { theme } = useThemeStore();
     const { t } = useTranslation();
-    const C = COLORS[theme];
+    const { direction } = useLanguageStore();
+    
+    const safeDevices = Array.isArray(devices) ? devices : [];
+    const C = COLORS[theme || 'dark'] || COLORS.dark;
 
     const defaults = defaultDates();
     const [selectedImei, setSelectedImei] = useState('');
@@ -408,8 +424,8 @@ export default function HistoryScreen() {
 
     // Update track HTML whenever track, theme, or stops change
     useEffect(() => {
-        if (track.length > 0) setTrackHtml(buildTrackHtml(track, theme, playIdx, stops));
-    }, [track, theme, stops]);
+        if (track.length > 0) setTrackHtml(buildTrackHtml(track, theme, playIdx, stops, direction));
+    }, [track, theme, stops, direction]);
 
     // Reference specifically for Android/iOS WebView
     const webViewRef = useRef<WebView>(null);
@@ -538,9 +554,9 @@ export default function HistoryScreen() {
                             style={s.picker}
                             dropdownIconColor={C.textMuted}
                         >
-                            <Picker.Item label={t('common.selectDevice') + '...'} value="" color={C.textMuted} />
-                            {devices.map((d: Device) => (
-                                <Picker.Item key={d.imei} label={`${d.deviceName}`} value={d.imei} color={C.textPrimary} />
+                            <Picker.Item label={t('common.selectDevice') + '...'} value="" color="#94a3b8" />
+                            {safeDevices.map((d: Device) => (
+                                <Picker.Item key={d.imei} label={`${d.deviceName}`} value={d.imei} color="#1e293b" />
                             ))}
                         </Picker>
                     </View>
@@ -554,9 +570,9 @@ export default function HistoryScreen() {
                             style={s.picker}
                             dropdownIconColor={C.textMuted}
                         >
-                            <Picker.Item label={t('history.positionModeOptions.precise')} value="precise" color={C.textPrimary} />
-                            <Picker.Item label={t('history.positionModeOptions.optimized')} value="optimized" color={C.textPrimary} />
-                            <Picker.Item label={t('history.positionModeOptions.all')} value="all" color={C.textPrimary} />
+                            <Picker.Item label={t('history.positionModeOptions.precise')} value="precise" color="#1e293b" />
+                            <Picker.Item label={t('history.positionModeOptions.optimized')} value="optimized" color="#1e293b" />
+                            <Picker.Item label={t('history.positionModeOptions.all')} value="all" color="#1e293b" />
                         </Picker>
                     </View>
 
@@ -603,30 +619,30 @@ export default function HistoryScreen() {
                                 <Text style={s.quickBtnText}>{label}</Text>
                             </TouchableOpacity>
                         ))}
-                    </View>
-
-                    {/* Load button */}
-                    <TouchableOpacity
-                        style={[s.loadBtn, (!selectedImei || loading) && s.loadBtnDisabled]}
-                        onPress={loadTrack}
-                        disabled={!selectedImei || loading}
-                    >
-                        {loading
-                            ? <ActivityIndicator color="#fff" size="small" />
-                            : <Text style={s.loadBtnText}><Feather name="search" size={14} color="#fff" /> {t('history.loadTrack')}</Text>
-                        }
-                    </TouchableOpacity>
-
-                    {error && <Text style={s.errorText}>{error}</Text>}
-                    {rawTrack.length > 0 && track.length === 0 && (
-                        <Text style={[s.errorText, { color: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.05)', borderColor: 'rgba(245,158,11,0.2)', borderWidth: 1, padding: 10, borderRadius: 8, marginTop: 8, overflow: 'hidden' }]}>
-                            {t('history.filteredNoDataHint')}
-                        </Text>
-                    )}
-                    {track.length > 0 && (
-                        <Text style={s.pointCount}><Feather name="check-circle" size={12} color={C.online} /> {track.length} {t('history.pointsLoaded')}</Text>
-                    )}
+                </View>
                 </ScrollView>
+
+                {/* Load button — pinned below scroll area, always visible */}
+                <TouchableOpacity
+                    style={[s.loadBtn, (!selectedImei || loading) && s.loadBtnDisabled]}
+                    onPress={loadTrack}
+                    disabled={!selectedImei || loading}
+                >
+                    {loading
+                        ? <ActivityIndicator color="#fff" size="small" />
+                        : <Text style={s.loadBtnText}><Feather name="search" size={14} color="#fff" /> {t('history.loadTrack')}</Text>
+                    }
+                </TouchableOpacity>
+
+                {error && <Text style={s.errorText}>{error}</Text>}
+                {rawTrack.length > 0 && track.length === 0 && (
+                    <Text style={[s.errorText, { color: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.05)', borderColor: 'rgba(245,158,11,0.2)', borderWidth: 1, padding: 10, borderRadius: 8, marginTop: 8, overflow: 'hidden' }]}>
+                        {t('history.filteredNoDataHint')}
+                    </Text>
+                )}
+                {track.length > 0 && (
+                    <Text style={s.pointCount}><Feather name="check-circle" size={12} color={C.online} /> {track.length} {t('history.pointsLoaded')}</Text>
+                )}
             </View>
 
             {/* ── Map */}
@@ -667,13 +683,15 @@ export default function HistoryScreen() {
                             </div>
                         </div>
                     </div>
-                ) : (
+                ) : isFocused ? (
                     // Native WebView (Android/iOS)
                     <View style={{ flex: 1, position: 'relative' }}>
                         <WebView
+                            key={`history-map-${theme || 'dark'}`}
                             ref={webViewRef}
                             originWhitelist={['*']}
                             source={{ html: trackHtml }}
+                            style={{ flex: 1 }}
                             containerStyle={{ width: '100%', height: '100%' }}
                             javaScriptEnabled={true}
                             domStorageEnabled={true}
@@ -691,6 +709,8 @@ export default function HistoryScreen() {
                             </View>
                         </View>
                     </View>
+                ) : (
+                    <View style={{ flex: 1, backgroundColor: C.bgPrimary }} />
                 )}
             </View>
 
@@ -945,8 +965,8 @@ const styles = (C: any) => StyleSheet.create({
     quickBtnText: { fontSize: 12, fontWeight: '600', color: C.textSecondary },
 
     loadBtn: {
-        backgroundColor: C.accent, borderRadius: 10, paddingVertical: 12,
-        alignItems: 'center', marginBottom: 6,
+        backgroundColor: C.accent, borderRadius: 12, paddingVertical: 14,
+        alignItems: 'center', marginTop: 8, marginBottom: 6,
     },
     loadBtnDisabled: { opacity: 0.5 },
     loadBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
@@ -1004,7 +1024,7 @@ const styles = (C: any) => StyleSheet.create({
     playStats: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     playSpeed: { fontSize: 13, fontWeight: '700' },
     playTime: { fontSize: 12, color: '#94a3b8' },
-    playProgress: { fontSize: 11, color: '#64748b', marginLeft: 'auto' as never },
+    playProgress: { fontSize: 11, color: '#64748b', marginStart: 'auto' as never },
 
     speedWrap: { flexDirection: 'row', gap: 4 },
     speedBtn: {
