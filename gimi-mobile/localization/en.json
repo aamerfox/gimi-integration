@@ -141,6 +141,10 @@
         "signIn": "Sign In",
         "signingIn": "Signing in...",
         "loginFailed": "Login failed",
+        "loginError": "Invalid username or password.",
+        "invalidCredentials": "Invalid account or password. Please try again.",
+        "accountNotAuthorized": "Account not authorized. Contact your administrator.",
+        "networkError": "Cannot connect to server. Check your internet connection.",
         "logout": "Logout",
         "confirmLogout": "Are you sure you want to log out?"
     },
@@ -176,7 +180,7 @@
     "geofences": {
         "fences": "Fences",
         "create": "Create",
-        "noGeofences": "No geofences yet. Tap ➕ Create.",
+        "noGeofences": "No geofences yet. Tap Create to add one.",
         "fenceNameLabel": "FENCE NAME *",
         "placeholderName": "e.g. Office Zone",
         "deviceLabel": "DEVICE (optional)",

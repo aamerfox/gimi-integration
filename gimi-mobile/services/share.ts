@@ -9,9 +9,7 @@
  */
 
 import CryptoJS from 'crypto-js';
-
-// We sign with the same app secret already baked into the app
-const SHARE_SECRET = 'AFF6D2C054844194BC1C9A93B8B9C3AA';
+import { SHARE_SECRET } from '../config/constants';
 
 export interface ShareParams {
     imei: string;

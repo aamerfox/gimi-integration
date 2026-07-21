@@ -12,8 +12,7 @@ import { useThemeStore } from '@/store/theme';
 import { useTranslation } from 'react-i18next';
 import COLORS from '@/constants/Colors';
 import { Feather } from '@expo/vector-icons';
-
-const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
+import { APP_KEY } from '@/config/constants';
 
 interface LoginResult {
     accessToken?: string;
@@ -70,7 +69,31 @@ export default function LoginScreen() {
                 setError(t('auth.loginError'));
             }
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : t('common.error');
+            // Map raw JIMI/TrackSolid error codes to user-friendly messages
+            let msg = t('auth.loginError');
+            if (err instanceof Error) {
+                const raw = err.message;
+                if (
+                    raw.includes('1001') ||
+                    raw.toLowerCase().includes('appkey') ||
+                    raw.includes('缺少') // Chinese: "missing parameter"
+                ) {
+                    msg = t('auth.invalidCredentials') || 'Invalid account or password. Please try again.';
+                } else if (
+                    raw.includes('1002') ||
+                    raw.includes('非法') // Chinese: "illegal user"
+                ) {
+                    msg = t('auth.accountNotAuthorized') || 'Account not authorized. Contact your administrator.';
+                } else if (
+                    raw.toLowerCase().includes('network') ||
+                    raw.toLowerCase().includes('timeout') ||
+                    raw.toLowerCase().includes('connect')
+                ) {
+                    msg = t('auth.networkError') || 'Cannot connect to server. Check your internet connection.';
+                } else if (raw.length > 0) {
+                    msg = raw; // Use the error message directly (e.g., our custom "Invalid account or password")
+                }
+            }
             setError(msg);
             if (Platform.OS !== 'web') Alert.alert(t('common.error'), msg);
         } finally {

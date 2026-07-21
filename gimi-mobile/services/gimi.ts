@@ -1,12 +1,27 @@
 import { api, customApi } from './api';
 import { useSimulationStore } from '../store/simulation';
-
-const TAG_APP_KEY = '0310e0f4330f4853a80e1fd9612ca0a7';
+import { TAG_APP_KEY } from '../config/constants';
 
 // Helper to format ISO timestamp (e.g. 2026-06-18T09:39:22.000+00:00) to Jimi standard (e.g. 2026-06-18 09:39:22)
 const formatGpsTime = (isoString: string) => {
     if (!isoString) return '';
     return isoString.replace('T', ' ').split('.')[0];
+};
+
+// Helper with retry logic for unstable networks
+const fetchWithRetry = async (url: string, options: RequestInit, retries = 3, delayMs = 1500) => {
+    let lastError: any;
+    for (let i = 0; i < retries; i++) {
+        try {
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            lastError = e;
+            await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)));
+        }
+    }
+    throw lastError;
 };
 
 // Helper to query OCI Tag API for the latest coordinate point
@@ -20,12 +35,11 @@ const queryOciLatestPoint = async (imei: string) => {
     }).catch(e => console.error('Background refresh failed:', e));
 
     const url = 'https://tag.traceplus.co/tag/v1/device/latest-point';
-    const res = await fetch(url, {
+    return fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ appKey: TAG_APP_KEY, deviceImei: imei })
     });
-    return res.json();
 };
 
 // Helper to query OCI Tag API for track history coordinate path
@@ -87,23 +101,55 @@ const calculateSimulatedBattery = (activationTimeStr: string): string => {
 
 export const gimiService = {
     // 1. Authentication
+    // Three-stage login:
+    //   Stage 1: Local Zustand store (instant, no network) — catches hertz + any cached OCI accounts
+    //   Stage 2: Remote SQLite backend (tag.traceplus.co/custom-api) — syncs fresh OCI accounts
+    //   Stage 3: TrackSolid Pro API (jimi.oauth.token.get) — for native GPS tracker accounts
     login: async (account: string, password_md5: string) => {
-        // Query custom backend first
+        const accountLower = account.trim().toLowerCase();
+
+        // ── Stage 1: Check local Zustand store first (works offline) ──────────
+        const localAccounts = useSimulationStore.getState().simulatedChildAccounts;
+        const localMatch = localAccounts.find(
+            (acc) => acc.accountId.toLowerCase() === accountLower
+        );
+        if (localMatch && localMatch.passwordMd5) {
+            if (localMatch.passwordMd5.toLowerCase() === password_md5.toLowerCase()) {
+                console.log(`[Auth] Stage 1: OCI local match for "${account}"`);
+                return {
+                    code: 0,
+                    message: 'success',
+                    result: {
+                        accessToken: `oci_token_${localMatch.accountId}`,
+                        refreshToken: `oci_refresh_${localMatch.accountId}`,
+                        expiresIn: 7200,
+                    }
+                };
+            } else {
+                // Account IS in the OCI store but password is wrong.
+                // Fail immediately — don't leak into TrackSolid.
+                console.warn(`[Auth] Stage 1: OCI account found, wrong password for "${account}"`);
+                throw new Error('Invalid account or password. Please try again.');
+            }
+        }
+
+        // ── Stage 2: Try remote SQLite backend ────────────────────────────────
+        let ociAccountExistsButWrongPassword = false;
         try {
-            const res = await customApi.get(`/sub-accounts/${account}`);
+            const res = await customApi.get(`/sub-accounts/${accountLower}`);
             if (res.data && res.data.code === 0 && res.data.result) {
                 const acc = res.data.result;
                 if (acc.passwordMd5?.toLowerCase() === password_md5.toLowerCase()) {
-                    // Populate local store with SQLite data
+                    console.log(`[Auth] Stage 2: OCI backend match for "${account}"`);
+                    // Sync the full account list into the local store
                     try {
                         const allRes = await customApi.get('/sub-accounts');
                         if (allRes.data && allRes.data.code === 0 && Array.isArray(allRes.data.result)) {
                             useSimulationStore.getState().setSimulatedChildAccounts(allRes.data.result);
                         }
-                    } catch (e) {
-                        console.error('Failed to sync custom sub-accounts from backend:', e);
+                    } catch (syncErr) {
+                        console.warn('[Auth] Backend sync failed (non-critical):', syncErr);
                     }
-
                     return {
                         code: 0,
                         message: 'success',
@@ -113,13 +159,29 @@ export const gimiService = {
                             expiresIn: 7200,
                         }
                     };
+                } else {
+                    // Account exists in OCI backend but password is wrong — flag it
+                    console.warn(`[Auth] Stage 2: OCI backend account found, wrong password for "${account}"`);
+                    ociAccountExistsButWrongPassword = true;
                 }
             }
-        } catch (err) {
-            console.log('Account not in custom database or backend offline, checking TrackSolid...', err);
+        } catch (err: any) {
+            // 404 = account not in OCI DB → continue to TrackSolid
+            // other errors = backend offline → continue to TrackSolid
+            if (err?.response?.status === 404) {
+                console.log(`[Auth] Stage 2: Account "${account}" not in OCI DB, trying TrackSolid...`);
+            } else {
+                console.warn('[Auth] Stage 2: Backend error, will try TrackSolid:', err?.message);
+            }
         }
 
-        // Fallback to standard TrackSolid API
+        // Fail fast if OCI backend found the account but password was wrong
+        if (ociAccountExistsButWrongPassword) {
+            throw new Error('Invalid account or password. Please try again.');
+        }
+
+        // ── Stage 3: TrackSolid Pro API (for native GPS tracker accounts) ─────
+        console.log(`[Auth] Stage 3: Attempting TrackSolid login for "${account}"`);
         return api.post('', {
             method: 'jimi.oauth.token.get',
             user_id: account,
@@ -189,50 +251,56 @@ export const gimiService = {
             const mappedImeis = mappedImeisString.split(',').map(s => s.trim()).filter(Boolean);
 
             const result = [];
-            for (let idx = 0; idx < mappedImeis.length; idx++) {
-                const imei = mappedImeis[idx];
-                const devName = matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)';
-                const actTime = getDeviceActivationTime(imei, matched?.deviceImei, matched?.activationTime);
-                const batVal = calculateSimulatedBattery(actTime);
-                try {
-                    const ociRes = await queryOciLatestPoint(imei);
-                    if (ociRes && ociRes.code === 0 && ociRes.data) {
-                        const d = ociRes.data;
-                        result.push({
-                            imei,
-                            deviceName: devName,
-                            mcType: 'Tag',
-                            icon: 'automobile',
-                            status: '1',
-                            posType: 'GPS',
-                            lat: d.lat,
-                            lng: d.lng,
-                            speed: 0,
-                            gpsTime: formatGpsTime(d.timestamp),
-                            accStatus: '1',
-                            batteryPowerVal: batVal
-                        });
-                        continue;
+            const chunkSize = 15;
+            for (let i = 0; i < mappedImeis.length; i += chunkSize) {
+                const chunk = mappedImeis.slice(i, i + chunkSize);
+                const chunkPromises = chunk.map(async (imei, chunkIdx) => {
+                    const idx = i + chunkIdx;
+                    const devName = matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)';
+                    const actTime = getDeviceActivationTime(imei, matched?.deviceImei, matched?.activationTime);
+                    const batVal = calculateSimulatedBattery(actTime);
+                    try {
+                        const ociRes = await queryOciLatestPoint(imei);
+                        if (ociRes && ociRes.code === 0 && ociRes.data) {
+                            const d = ociRes.data;
+                            return {
+                                imei,
+                                deviceName: devName,
+                                mcType: 'Tag',
+                                icon: 'automobile',
+                                status: '1',
+                                posType: 'GPS',
+                                lat: d.lat,
+                                lng: d.lng,
+                                speed: 0,
+                                gpsTime: formatGpsTime(d.timestamp),
+                                accStatus: '1',
+                                batteryPowerVal: batVal
+                            };
+                        }
+                    } catch (e) {
+                        console.error(`Failed to query OCI latest-point for ${imei}:`, e);
                     }
-                } catch (e) {
-                    console.error(`Failed to query OCI latest-point for ${imei}:`, e);
-                }
 
-                // Fallback coordinate, slightly offset to avoid stacking
-                result.push({
-                    imei,
-                    deviceName: devName,
-                    mcType: 'Tag',
-                    icon: 'automobile',
-                    status: '1',
-                    posType: 'GPS',
-                    lat: 24.705177 + (idx * 0.005),
-                    lng: 46.71977 + (idx * 0.005),
-                    speed: 0,
-                    gpsTime: '2026-06-18 12:00:00',
-                    accStatus: '1',
-                    batteryPowerVal: batVal
+                    // Fallback coordinate, slightly offset to avoid stacking
+                    return {
+                        imei,
+                        deviceName: devName,
+                        mcType: 'Tag',
+                        icon: 'automobile',
+                        status: '1',
+                        posType: 'GPS',
+                        lat: 24.705177 + (idx * 0.005),
+                        lng: 46.71977 + (idx * 0.005),
+                        speed: 0,
+                        gpsTime: '2026-06-18 12:00:00',
+                        accStatus: '1',
+                        batteryPowerVal: batVal
+                    };
                 });
+                
+                const chunkResults = await Promise.all(chunkPromises);
+                result.push(...chunkResults);
             }
 
             return {

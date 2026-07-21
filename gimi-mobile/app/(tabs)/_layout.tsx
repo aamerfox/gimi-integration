@@ -103,6 +103,14 @@ export default function TabLayout() {
           headerTitle: t('tabs.share'),
         }}
       />
+      <Tabs.Screen
+        name="copilot"
+        options={{
+          title: 'Copilot',
+          tabBarIcon: ({ color, size }) => <Feather name="cpu" size={size || 24} color={color} />,
+          headerTitle: 'AI Copilot',
+        }}
+      />
     </Tabs>
   );
 }

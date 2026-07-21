@@ -8,6 +8,11 @@ import { useThemeStore } from '@/store/theme';
 import { useLanguageStore } from '@/store/language';
 import COLORS from '@/constants/Colors';
 import i18n from '@/localization/i18n';
+import { validateConfig } from '@/config/constants';
+
+// Validate environment variables once at module load time (dev only — silent in production)
+validateConfig();
+
 
 // ── Google Fonts ──
 import { 

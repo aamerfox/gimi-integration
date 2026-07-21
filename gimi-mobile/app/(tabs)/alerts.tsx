@@ -97,8 +97,7 @@ export default function AlertsScreen() {
 
     const FILTERS = [
         { key: 'all', label: t('alertsFilters.all') },
-        // Only show geofence filter if the account has geofences
-        ...(hasOwnGeofences ? [{ key: 'geofence', label: t('alertsFilters.geofence') }] : []),
+        { key: 'geofence', label: t('alertsFilters.geofence') },
         { key: 'battery', label: t('alertsFilters.battery') },
     ];
     const refreshLabel = t('alertsFilters.refresh');
@@ -243,16 +242,13 @@ export default function AlertsScreen() {
         return t.includes('geofence') || t.includes('fence') || t === 'in' || t === 'out';
     };
 
-    // Filter alarms — skip geofence alarms if the account has no own geofences (unless it is a local event)
+    // Filter alarms
     const filteredAlarms = alarms.filter(a => {
-        // If account has no geofences, hide all geofence-type alarms
-        if (!hasOwnGeofences && isGeofenceAlarm(a.alarmType) && !a.alarmId.startsWith('local-')) return false;
-
-
         if (filter === 'all') return true;
         if (filter === 'geofence') return isGeofenceAlarm(a.alarmType);
         if (filter === 'sos') return a.alarmType.toLowerCase().includes('sos');
         if (filter === 'battery') return a.alarmType.toLowerCase().includes('battery') || a.alarmType.toLowerCase().includes('power');
+
         return a.alarmType.toLowerCase().includes(filter);
     });
     const paged = filteredAlarms.slice(0, page * PAGE_SIZE);
@@ -299,7 +295,7 @@ export default function AlertsScreen() {
         <View style={s.container}>
             {/* ── Header */}
             <View style={s.headerBar}>
-                <Text style={s.headerTitle}>{t('alerts.alarms')} ({alarms.length})</Text>
+                <Text style={s.headerTitle}>{t('alerts.alarms')} ({filteredAlarms.length})</Text>
             </View>
 
             {/* ── Filter bar */}

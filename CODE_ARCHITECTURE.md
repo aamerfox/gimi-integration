@@ -92,3 +92,20 @@ const styles = (C: any) => StyleSheet.create({
 
 - **Localization (`react-i18next`)**: Text strings are never hardcoded. They are wrapped in `t('key')` from the translation files (`locales/`). RTL layout shifts automatically trigger via Tailwind (`rtl:space-x-reverse`) on Web, and Flexbox `flexDirection: 'row-reverse'` on Mobile when Arabic config is active.
 - **Time Utilities (`utils/time.ts`)**: Timezone standardization ensures that the raw timestamp string returned by TrackSolid (UTC+8 or direct UTC) is normalized correctly across local device time zones using `date-fns`.
+
+---
+
+## 7. AI Copilot Architecture (Airia)
+
+To enable conversational interaction with telemetry data, the architecture incorporates the **Airia AI Orchestration Platform** through an external Model Context Protocol (MCP) bridge.
+
+### Component Breakdown
+1. **MCP Server (`airia-mcp-server/`)**: 
+   A standalone Node.js microservice utilizing the `@modelcontextprotocol/sdk`. It exposes `gimi.ts` functions (e.g., `GetDeviceLocation`, `GetTrackHistory`) as standardized **Airia Tools**. The Airia cloud infrastructure calls this server to fetch required live data during a chat session.
+2. **Web Integration**:
+   The Airia Chat Widget is injected dynamically into the root `index.html`. This widget connects directly to the assigned Airia Agent, providing a seamless "Copilot" bubble across all dashboard routes without complex React state management.
+3. **Mobile Integration**:
+   The native `copilot.tsx` screen communicates directly with the Airia `/v1/Chats` REST API. This allows for a customized, fluid native UI while keeping the conversational state in sync across devices (using the user's secure API token/context).
+
+> [!TIP]
+> When adding new features to `gimi.ts` (e.g., Remote Engine Cutoff), remember to mirror those functions as new endpoints in the `airia-mcp-server` so the Copilot can also execute them.

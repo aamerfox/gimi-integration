@@ -17,6 +17,22 @@ const formatGpsTime = (isoString: string) => {
     return isoString.replace('T', ' ').split('.')[0];
 };
 
+// Helper with retry logic for unstable networks
+const fetchWithRetry = async (url: string, options: RequestInit, retries = 3, delayMs = 1500) => {
+    let lastError: any;
+    for (let i = 0; i < retries; i++) {
+        try {
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            lastError = e;
+            await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)));
+        }
+    }
+    throw lastError;
+};
+
 // Helper to query OCI Tag API for the latest coordinate point
 const queryOciLatestPoint = async (imei: string) => {
     // Fire a non-blocking background refresh to keep the adapter up-to-date
@@ -28,12 +44,11 @@ const queryOciLatestPoint = async (imei: string) => {
     }).catch(e => console.error('Background refresh failed:', e));
 
     const url = getTagUrl('/tag/v1/device/latest-point');
-    const res = await fetch(url, {
+    return fetchWithRetry(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ appKey: TAG_APP_KEY, deviceImei: imei })
     });
-    return res.json();
 };
 
 // Helper to query OCI Tag API for track history coordinate path
@@ -189,50 +204,56 @@ export const gimiService = {
             const mappedImeis = mappedImeisString.split(',').map(s => s.trim()).filter(Boolean);
 
             const result = [];
-            for (let idx = 0; idx < mappedImeis.length; idx++) {
-                const imei = mappedImeis[idx];
-                const devName = matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)';
-                const actTime = getDeviceActivationTime(imei, matched?.deviceImei, matched?.activationTime);
-                const batVal = calculateSimulatedBattery(actTime);
-                try {
-                    const ociRes = await queryOciLatestPoint(imei);
-                    if (ociRes && ociRes.code === 0 && ociRes.data) {
-                        const d = ociRes.data;
-                        result.push({
-                            imei,
-                            deviceName: devName,
-                            mcType: 'Tag',
-                            icon: 'automobile',
-                            status: '1',
-                            posType: 'GPS',
-                            lat: d.lat,
-                            lng: d.lng,
-                            speed: 0,
-                            gpsTime: formatGpsTime(d.timestamp),
-                            accStatus: '1',
-                            batteryPowerVal: batVal
-                        });
-                        continue;
+            const chunkSize = 15;
+            for (let i = 0; i < mappedImeis.length; i += chunkSize) {
+                const chunk = mappedImeis.slice(i, i + chunkSize);
+                const chunkPromises = chunk.map(async (imei, chunkIdx) => {
+                    const idx = i + chunkIdx;
+                    const devName = matched ? (mappedImeis.length > 1 ? `${matched.nickName} - Unit ${idx + 1}` : `${matched.nickName} Device`) : 'Hertz Device (OCI)';
+                    const actTime = getDeviceActivationTime(imei, matched?.deviceImei, matched?.activationTime);
+                    const batVal = calculateSimulatedBattery(actTime);
+                    try {
+                        const ociRes = await queryOciLatestPoint(imei);
+                        if (ociRes && ociRes.code === 0 && ociRes.data) {
+                            const d = ociRes.data;
+                            return {
+                                imei,
+                                deviceName: devName,
+                                mcType: 'Tag',
+                                icon: 'automobile',
+                                status: '1',
+                                posType: 'GPS',
+                                lat: d.lat,
+                                lng: d.lng,
+                                speed: 0,
+                                gpsTime: formatGpsTime(d.timestamp),
+                                accStatus: '1',
+                                batteryPowerVal: batVal
+                            };
+                        }
+                    } catch (e) {
+                        console.error(`Failed to query OCI latest-point for ${imei}:`, e);
                     }
-                } catch (e) {
-                    console.error(`Failed to query OCI latest-point for ${imei}:`, e);
-                }
-                
-                // Fallback coordinate, slightly offset to avoid stacking
-                result.push({
-                    imei,
-                    deviceName: devName,
-                    mcType: 'Tag',
-                    icon: 'automobile',
-                    status: '1',
-                    posType: 'GPS',
-                    lat: 24.705177 + (idx * 0.005),
-                    lng: 46.71977 + (idx * 0.005),
-                    speed: 0,
-                    gpsTime: '2026-06-18 12:00:00',
-                    accStatus: '1',
-                    batteryPowerVal: batVal
+                    
+                    // Fallback coordinate, slightly offset to avoid stacking
+                    return {
+                        imei,
+                        deviceName: devName,
+                        mcType: 'Tag',
+                        icon: 'automobile',
+                        status: '1',
+                        posType: 'GPS',
+                        lat: 24.705177 + (idx * 0.005),
+                        lng: 46.71977 + (idx * 0.005),
+                        speed: 0,
+                        gpsTime: '2026-06-18 12:00:00',
+                        accStatus: '1',
+                        batteryPowerVal: batVal
+                    };
                 });
+                
+                const chunkResults = await Promise.all(chunkPromises);
+                result.push(...chunkResults);
             }
 
             return {

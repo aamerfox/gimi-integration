@@ -3,12 +3,10 @@ import CryptoJS from 'crypto-js';
 import { useAuthStore } from '../store/auth';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
+import { APP_KEY, APP_SECRET } from '../config/constants';
 
 // All environments must connect through the Cloud Run proxy to bypass TrackSolid Pro IP Whitelisting
 const API_BASE = 'https://tag.traceplus.co/token';
-
-const APP_KEY = '8FB345B8693CCD00335F2C82D35E0CC0339A22A4105B6558';
-const APP_SECRET = 'd1bf0654370a4a148abacd02abe8146e';
 
 export const api = axios.create({
     baseURL: API_BASE,

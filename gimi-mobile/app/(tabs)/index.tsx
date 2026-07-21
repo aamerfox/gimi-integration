@@ -136,6 +136,13 @@ export default function LiveMapScreen() {
     }
   }, [accessToken, userId, updateDeviceLocations, setError]);
 
+  // ── Initial fetch and polling
+  useEffect(() => {
+    fetchLocations();
+    const interval = setInterval(fetchLocations, POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchLocations]);
+
   // ── Language change listener
   useEffect(() => {
     const onLangChange = () => setForceUpdate((v) => v + 1);
